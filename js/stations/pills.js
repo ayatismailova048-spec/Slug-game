@@ -28,7 +28,7 @@
 
     function feed(key) {
       swallowKey = key; swallow = 1; held = null;
-      Sfx.gulp();
+      Sfx.swallow(0.9 + Math.random() * 0.25);
       const col = SlugModel.PILLS[key].col;
       flash = 1; flashCol = col;
       parts.emit(24, () => ({

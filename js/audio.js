@@ -155,6 +155,51 @@
     o.connect(g); g.connect(A.master); o.start(t); o.stop(t + 0.3);
   };
 
+  /** Глоток: мокрый чавк, два «глык-глык» и бульк в животе */
+  A.swallow = function (pitch = 1) {
+    if (!A.ready) return;
+    const t0 = now();
+
+    // чавк
+    const n = noiseSrc(), nf = A.ctx.createBiquadFilter(), ng = A.ctx.createGain();
+    nf.type = 'bandpass'; nf.Q.value = 1.4;
+    nf.frequency.setValueAtTime(950 * pitch, t0);
+    nf.frequency.exponentialRampToValueAtTime(300 * pitch, t0 + 0.13);
+    env(ng, t0, 0.005, 0.15, 0.2);
+    n.connect(nf); nf.connect(ng); ng.connect(A.master);
+    n.start(t0); n.stop(t0 + 0.22);
+
+    // два глотка
+    [0.10, 0.27].forEach((off, i) => {
+      const t = t0 + off;
+      const o = A.ctx.createOscillator(), g = A.ctx.createGain(), f = A.ctx.createBiquadFilter();
+      o.type = 'sine';
+      const f0 = (430 - i * 100) * pitch;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * 0.22, t + 0.17);
+      f.type = 'lowpass'; f.frequency.value = 1300;
+      env(g, t, 0.008, 0.2, 0.3 - i * 0.07);
+      o.connect(f); f.connect(g); g.connect(A.master);
+      o.start(t); o.stop(t + 0.32);
+      // капелька «мокроты» поверх каждого глотка
+      const c = noiseSrc(), cf = A.ctx.createBiquadFilter(), cg = A.ctx.createGain();
+      cf.type = 'bandpass'; cf.frequency.value = (1600 - i * 400) * pitch; cf.Q.value = 4;
+      env(cg, t, 0.004, 0.07, 0.08);
+      c.connect(cf); cf.connect(cg); cg.connect(A.master);
+      c.start(t); c.stop(t + 0.12);
+    });
+
+    // бульк в животе
+    const t2 = t0 + 0.44;
+    const o2 = A.ctx.createOscillator(), g2 = A.ctx.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(155 * pitch, t2);
+    o2.frequency.exponentialRampToValueAtTime(52 * pitch, t2 + 0.26);
+    env(g2, t2, 0.012, 0.3, 0.24);
+    o2.connect(g2); g2.connect(A.master);
+    o2.start(t2); o2.stop(t2 + 0.45);
+  };
+
   A.pop = function (p = 1) {
     if (!A.ready) return;
     const t = now();
