@@ -160,44 +160,44 @@
     if (!A.ready) return;
     const t0 = now();
 
-    // чавк
+    // чавк ртом
     const n = noiseSrc(), nf = A.ctx.createBiquadFilter(), ng = A.ctx.createGain();
-    nf.type = 'bandpass'; nf.Q.value = 1.4;
-    nf.frequency.setValueAtTime(950 * pitch, t0);
-    nf.frequency.exponentialRampToValueAtTime(300 * pitch, t0 + 0.13);
-    env(ng, t0, 0.005, 0.15, 0.2);
+    nf.type = 'bandpass'; nf.Q.value = 1.2;
+    nf.frequency.setValueAtTime(1100 * pitch, t0);
+    nf.frequency.exponentialRampToValueAtTime(260 * pitch, t0 + 0.16);
+    env(ng, t0, 0.004, 0.18, 0.3);
     n.connect(nf); nf.connect(ng); ng.connect(A.master);
-    n.start(t0); n.stop(t0 + 0.22);
+    n.start(t0); n.stop(t0 + 0.25);
 
-    // два глотка
-    [0.10, 0.27].forEach((off, i) => {
+    // два глотка «глык-глык»
+    [0.12, 0.34].forEach((off, i) => {
       const t = t0 + off;
       const o = A.ctx.createOscillator(), g = A.ctx.createGain(), f = A.ctx.createBiquadFilter();
       o.type = 'sine';
-      const f0 = (430 - i * 100) * pitch;
+      const f0 = (380 - i * 90) * pitch;
       o.frequency.setValueAtTime(f0, t);
-      o.frequency.exponentialRampToValueAtTime(f0 * 0.22, t + 0.17);
-      f.type = 'lowpass'; f.frequency.value = 1300;
-      env(g, t, 0.008, 0.2, 0.3 - i * 0.07);
+      o.frequency.exponentialRampToValueAtTime(f0 * 0.2, t + 0.2);
+      f.type = 'lowpass'; f.frequency.value = 1400;
+      env(g, t, 0.006, 0.24, 0.5 - i * 0.1);
       o.connect(f); f.connect(g); g.connect(A.master);
-      o.start(t); o.stop(t + 0.32);
-      // капелька «мокроты» поверх каждого глотка
+      o.start(t); o.stop(t + 0.36);
+      // мокрый призвук
       const c = noiseSrc(), cf = A.ctx.createBiquadFilter(), cg = A.ctx.createGain();
-      cf.type = 'bandpass'; cf.frequency.value = (1600 - i * 400) * pitch; cf.Q.value = 4;
-      env(cg, t, 0.004, 0.07, 0.08);
+      cf.type = 'bandpass'; cf.frequency.value = (1500 - i * 380) * pitch; cf.Q.value = 3;
+      env(cg, t, 0.004, 0.1, 0.16);
       c.connect(cf); cf.connect(cg); cg.connect(A.master);
-      c.start(t); c.stop(t + 0.12);
+      c.start(t); c.stop(t + 0.16);
     });
 
     // бульк в животе
-    const t2 = t0 + 0.44;
+    const t2 = t0 + 0.56;
     const o2 = A.ctx.createOscillator(), g2 = A.ctx.createGain();
     o2.type = 'sine';
-    o2.frequency.setValueAtTime(155 * pitch, t2);
-    o2.frequency.exponentialRampToValueAtTime(52 * pitch, t2 + 0.26);
-    env(g2, t2, 0.012, 0.3, 0.24);
+    o2.frequency.setValueAtTime(170 * pitch, t2);
+    o2.frequency.exponentialRampToValueAtTime(48 * pitch, t2 + 0.3);
+    env(g2, t2, 0.01, 0.36, 0.42);
     o2.connect(g2); g2.connect(A.master);
-    o2.start(t2); o2.stop(t2 + 0.45);
+    o2.start(t2); o2.stop(t2 + 0.5);
   };
 
   A.pop = function (p = 1) {

@@ -38,7 +38,6 @@
       }));
       setTimeout(() => {
         SlugModel.apply(App.slug, 'pill', 1, { pill: key });
-        Sfx.chime(key === 'cyan');
       }, 380);
     }
 
