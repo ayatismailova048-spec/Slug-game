@@ -13,8 +13,32 @@
     let items = [];
     let saveTimer = 0;
     const parts = new FX.Particles(300);
-    const TRASH = { x: 1420, y: 830, r: 62 };
-    const POOL = { x: 380, y: 800, rx: 215, ry: 72 };
+    const TRASH = { x: 1512, y: 918, r: 58 };
+    const POOL = { x: 330, y: 862, rx: 200, ry: 64 };
+    const TREE = { x: 1240, base: 952 };
+    const FIRE = { x: 812, y: 892 };
+
+    /** места, куда можно посадить слизня: ветки дерева и брёвна у костра */
+    const SPOTS = [
+      { x: 1104, y: 560 }, { x: 1408, y: 606 }, { x: 1136, y: 688 },   // ветки
+      { x: 648, y: 828 }, { x: 976, y: 828 }                            // брёвна
+    ];
+
+    function freeSpot(x, y, selfIdx) {
+      let best = null, bd = 130;
+      for (const sp of SPOTS) {
+        const d = U.dist(x, y, sp.x, sp.y);
+        if (d > bd) continue;
+        let taken = false;
+        for (let i = 0; i < items.length; i++) {
+          if (i === selfIdx) continue;
+          if (U.dist(items[i].x, items[i].y, sp.x, sp.y) < 34) { taken = true; break; }
+        }
+        if (taken) continue;
+        bd = d; best = sp;
+      }
+      return best;
+    }
 
     /** попал ли слизень в лужу */
     function inPool(x, y) {
@@ -72,7 +96,8 @@
     }
 
     return {
-      enter() { build(); refresh(); t = 0; },
+      enter() { build(); refresh(); t = 0; Sfx.loop('fire', true, 0.45); },
+      exit() { Sfx.loop('fire', false); },
       update(dt) {
         t += dt;
         parts.update(dt);
@@ -101,6 +126,22 @@
         if (changed) {
           saveTimer -= dt;
           if (saveTimer <= 0) { Save.mapSave(); saveTimer = 2.5; }
+        }
+
+        // искры и дымок от костра
+        if (Math.random() < dt * 16) {
+          parts.add({
+            kind: 'ember', x: FIRE.x + U.rand(-34, 34), y: FIRE.y - 16,
+            vx: U.rand(-26, 26), vy: U.rand(-150, -80), grav: 30, drag: 0.985,
+            life: U.rand(0.8, 1.8), size: U.rand(1.4, 3), alpha: 1
+          });
+        }
+        if (Math.random() < dt * 7) {
+          parts.add({
+            kind: 'smoke', x: FIRE.x + U.rand(-24, 24), y: FIRE.y - 110,
+            vx: U.rand(-16, 16), vy: U.rand(-60, -34), grav: -5, wind: 10,
+            life: U.rand(1.6, 3), size: U.rand(14, 28), alpha: 0.35
+          });
         }
 
         back.update(dt, App.pointer, App.pointer.down);
@@ -204,10 +245,9 @@
           bush(x - 46 * s, y - 118 * s, 50 * s, '#66a64e', '#457a34');
           ctx.restore();
         };
-        tree(120, 700, 0.8);
-        tree(1460, 690, 0.66);
-        bush(900, 690, 40, '#6fb054', '#4c8339');
-        bush(240, 900, 46, '#6fb054', '#4c8339');
+        tree(140, 690, 0.72);
+        bush(1010, 668, 40, '#6fb054', '#4c8339');
+        bush(300, 700, 44, '#6fb054', '#4c8339');
         // цветы
         const frnd = U.mulberry32(77);
         for (let i = 0; i < 40; i++) {
@@ -222,12 +262,18 @@
           ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
         }
         // камни
-        [[1080, 700, 46], [1160, 726, 30], [700, 900, 54]].forEach(([x, y, r], i) => {
+        [[520, 700, 42], [470, 722, 28], [1520, 760, 50]].forEach(([x, y, r], i) => {
           const g = ctx.createLinearGradient(x, y - r, x, y + r);
           g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.68, i * 0.4, 0, U.TAU); ctx.fill();
         });
+
+        // большое дерево с ветками
+        drawBigTree(ctx, t);
+
+        // костёр и брёвна
+        drawCamp(ctx, t);
 
         // слизни (сортируем по y для глубины)
         const order = items.map((it, i) => i).sort((a, b) => items[a].y - items[b].y);
@@ -294,6 +340,21 @@
           }
         }
         parts.draw(ctx);
+
+        // подсказка: куда можно посадить
+        if (dragIdx >= 0) {
+          const it = items[dragIdx];
+          const sp = freeSpot(it.x, it.y, dragIdx);
+          if (sp) {
+            ctx.save();
+            const pulse = 0.45 + 0.35 * Math.sin(t * 6);
+            ctx.strokeStyle = `rgba(255,255,255,${pulse})`;
+            ctx.lineWidth = 5;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 44, 78, 22, 0, 0, U.TAU); ctx.stroke();
+            ctx.restore();
+          }
+        }
 
         // корзина
         ctx.save();
@@ -363,7 +424,7 @@
         if (dragIdx >= 0) {
           const it = items[dragIdx];
           it.x = U.clamp(p.x + dx, 60, App.VW - 60);
-          it.y = U.clamp(p.y + dy, 620, App.VH - 60);
+          it.y = U.clamp(p.y + dy, 380, App.VH - 56);
         }
       },
       onUp(p) {
@@ -379,6 +440,14 @@
             Sfx.squish(0.6); App.toast('Слизень убран с карты');
           } else {
             const it = items[dragIdx];
+            const sp = it && freeSpot(it.x, it.y, dragIdx);
+            if (sp) {
+              it.x = sp.x; it.y = sp.y;
+              Sfx.squish(0.9);
+            } else if (it && it.y < 660) {
+              // не попал никуда наверху — спускается на траву
+              it.y = 700;
+            }
             if (it && inPool(it.x, it.y)) {
               const wasDry = (it.slug.fx.wet || 0) < 0.9;
               SlugModel.apply(it.slug, 'shower', 1);
@@ -398,5 +467,143 @@
         }
       }
     };
+
+    /* ---------- большое дерево ---------- */
+    function drawBigTree(ctx, t) {
+      const x = TREE.x, base = TREE.base;
+      const sway = Math.sin(t * 0.6) * 0.012;
+      ctx.save();
+      // тень под деревом
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      ctx.beginPath(); ctx.ellipse(x, base, 190, 34, 0, 0, U.TAU); ctx.fill();
+
+      // корни
+      ctx.strokeStyle = '#6b4a26'; ctx.lineWidth = 26; ctx.lineCap = 'round';
+      [-1, 1].forEach((s2) => {
+        ctx.beginPath();
+        ctx.moveTo(x + s2 * 20, base - 60);
+        ctx.quadraticCurveTo(x + s2 * 90, base - 30, x + s2 * 140, base - 2);
+        ctx.stroke();
+      });
+
+      ctx.translate(x, base);
+      ctx.rotate(sway);
+      ctx.translate(-x, -base);
+
+      // ствол
+      const tg = ctx.createLinearGradient(x - 70, 0, x + 70, 0);
+      tg.addColorStop(0, '#5b3d1f'); tg.addColorStop(0.45, '#7d5730'); tg.addColorStop(1, '#4a2f16');
+      ctx.fillStyle = tg;
+      ctx.beginPath();
+      ctx.moveTo(x - 72, base);
+      ctx.quadraticCurveTo(x - 44, base - 260, x - 34, 430);
+      ctx.lineTo(x + 34, 430);
+      ctx.quadraticCurveTo(x + 46, base - 260, x + 74, base);
+      ctx.closePath(); ctx.fill();
+      // кора
+      ctx.strokeStyle = 'rgba(60,38,16,0.55)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const ox = -46 + i * 18;
+        ctx.beginPath();
+        ctx.moveTo(x + ox, base - 30);
+        ctx.quadraticCurveTo(x + ox * 0.7 + 6, base - 250, x + ox * 0.5, 450);
+        ctx.stroke();
+      }
+
+      // ветки (на них сидят слизни)
+      const branch = (bx, by, len, dir, th) => {
+        ctx.strokeStyle = '#6b4a26'; ctx.lineWidth = th; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x + dir * 24, by + 42);
+        ctx.quadraticCurveTo(bx - dir * len * 0.35, by + 16, bx - dir * len * 0.02, by);
+        ctx.lineTo(bx + dir * len * 0.55, by);
+        ctx.stroke();
+        ctx.strokeStyle = '#8a6236'; ctx.lineWidth = th * 0.45;
+        ctx.beginPath();
+        ctx.moveTo(x + dir * 24, by + 40);
+        ctx.quadraticCurveTo(bx - dir * len * 0.35, by + 14, bx + dir * len * 0.55, by - 2);
+        ctx.stroke();
+      };
+      branch(1104, 606, 150, -1, 26);
+      branch(1408, 652, 150, 1, 26);
+      branch(1136, 734, 130, -1, 22);
+
+      // крона
+      const leaf = (lx, ly, r, c1, c2) => {
+        ctx.fillStyle = c2;
+        ctx.beginPath(); ctx.arc(lx, ly, r, 0, U.TAU); ctx.fill();
+        ctx.fillStyle = c1;
+        ctx.beginPath(); ctx.arc(lx - r * 0.22, ly - r * 0.26, r * 0.72, 0, U.TAU); ctx.fill();
+      };
+      [[-152, 392, 112], [0, 322, 138], [152, 396, 116], [-78, 286, 98], [88, 280, 102],
+       [-232, 470, 84], [236, 478, 86], [0, 430, 112]].forEach(([ox, oy, r], i) => {
+        leaf(x + ox, oy, r, i % 2 ? '#77b85c' : '#6aad50', i % 2 ? '#4f8b3a' : '#477f33');
+      });
+      // листики на ветках
+      [[1028, 590], [1478, 636], [1052, 718]].forEach(([lx, ly], i) => {
+        leaf(lx, ly, 30 + (i % 2) * 6, '#7cbf60', '#549240');
+      });
+      ctx.restore();
+    }
+
+    /* ---------- костёр и брёвна ---------- */
+    function drawCamp(ctx, t) {
+      const x = FIRE.x, y = FIRE.y;
+      ctx.save();
+      // круг камней
+      [[-96, 6], [-52, 20], [0, 26], [52, 20], [96, 6]].forEach(([ox, oy], i) => {
+        const g2 = ctx.createLinearGradient(x + ox, y + oy - 18, x + ox, y + oy + 14);
+        g2.addColorStop(0, '#b6bbb0'); g2.addColorStop(1, '#767c70');
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.ellipse(x + ox, y + oy, 26 - (i % 2) * 4, 17, i * 0.4, 0, U.TAU); ctx.fill();
+      });
+      // дрова шалашиком
+      for (let i = 0; i < 3; i++) {
+        ctx.save();
+        ctx.translate(x, y - 4);
+        ctx.rotate(-0.5 + i * 0.5);
+        ctx.fillStyle = '#5a3a18';
+        U.roundRect(ctx, -84, -11, 168, 22, 11); ctx.fill();
+        ctx.fillStyle = '#43290f';
+        U.roundRect(ctx, -84, 2, 168, 9, 5); ctx.fill();
+        ctx.restore();
+      }
+      // жар
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const cg = ctx.createRadialGradient(x, y - 6, 4, x, y - 6, 130);
+      cg.addColorStop(0, 'rgba(255,150,50,0.5)');
+      cg.addColorStop(1, 'rgba(255,90,20,0)');
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.ellipse(x, y - 6, 130, 40, 0, 0, U.TAU); ctx.fill();
+      ctx.restore();
+      FX.drawFire(ctx, x, y - 10, 74, 150, t, 1, 5, true);
+      ctx.restore();
+
+      // брёвна-скамейки
+      const log = (lx, ly, w) => {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.beginPath(); ctx.ellipse(lx, ly + 30, w * 0.55, 15, 0, 0, U.TAU); ctx.fill();
+        const lg = ctx.createLinearGradient(0, ly - 26, 0, ly + 26);
+        lg.addColorStop(0, '#8a6236'); lg.addColorStop(1, '#5b3d1f');
+        ctx.fillStyle = lg;
+        U.roundRect(ctx, lx - w / 2, ly - 26, w, 52, 26); ctx.fill();
+        ctx.fillStyle = '#c8a06a';
+        ctx.beginPath(); ctx.ellipse(lx - w / 2 + 4, ly, 13, 26, 0, 0, U.TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(120,88,44,0.8)'; ctx.lineWidth = 2;
+        for (let k = 1; k < 4; k++) {
+          ctx.beginPath(); ctx.ellipse(lx - w / 2 + 4, ly, 3 + k * 3, 6 + k * 6, 0, 0, U.TAU); ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(70,46,20,0.5)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (let k = 0; k < 4; k++) {
+          const yy = ly - 14 + k * 9;
+          ctx.beginPath(); ctx.moveTo(lx - w / 2 + 30, yy); ctx.lineTo(lx + w / 2 - 20, yy + 2); ctx.stroke();
+        }
+        ctx.restore();
+      };
+      log(648, 872, 250);
+      log(976, 872, 250);
+    }
   });
 })(window);
