@@ -57,7 +57,7 @@
     const fromUI = (e) => {
       if (App.naming) return true;
       const t = e && e.target;
-      return !!(t && t.closest && t.closest('#namebox, #boot'));
+      return !!(t && t.closest && t.closest('#namebox, #boot, #installBtn'));
     };
     const down = (e) => {
       if (fromUI(e)) return;

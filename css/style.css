@@ -24,7 +24,8 @@ html, body {
 }
 #boot.hidden { opacity: 0; visibility: hidden; }
 .boot-inner { padding: 30px; max-width: 620px; }
-.boot-slug { font-size: 96px; line-height: 1; animation: wob 2.4s ease-in-out infinite; }
+.boot-slug { width: 132px; height: 132px; border-radius: 30px; display: block; margin: 0 auto;
+  box-shadow: 0 10px 26px rgba(0,0,0,.45); animation: wob 2.4s ease-in-out infinite; }
 @keyframes wob {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-14px) rotate(3deg); }
@@ -73,3 +74,16 @@ html, body {
 #nameOk { background: linear-gradient(#3fbf8f, #227e5e); box-shadow: 0 5px 0 #17624a; }
 #nameCancel { background: linear-gradient(#8e9b93, #5f6d66); box-shadow: 0 5px 0 #46524c; }
 .name-btns button:active { transform: translateY(4px); box-shadow: none; }
+
+/* кнопка «Установить» — появляется, когда браузер это умеет */
+#installBtn {
+  position: fixed; right: 16px; bottom: 16px; z-index: 12;
+  display: flex; align-items: center; gap: 10px;
+  font: 800 17px "Nunito", "Trebuchet MS", sans-serif; color: #fff;
+  background: linear-gradient(#3fbf8f, #227e5e); border: none; border-radius: 18px;
+  padding: 10px 18px 10px 10px; cursor: pointer;
+  box-shadow: 0 6px 0 #17624a, 0 12px 22px rgba(0,0,0,.4);
+}
+#installBtn img { width: 38px; height: 38px; border-radius: 11px; }
+#installBtn:active { transform: translateY(5px); box-shadow: 0 1px 0 #17624a; }
+#installBtn.hidden { display: none; }
