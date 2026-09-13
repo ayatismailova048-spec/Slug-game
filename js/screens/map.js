@@ -13,6 +13,13 @@
     let items = [];
     const parts = new FX.Particles(300);
     const TRASH = { x: 1420, y: 830, r: 62 };
+    const POOL = { x: 380, y: 800, rx: 215, ry: 72 };
+
+    /** попал ли слизень в лужу */
+    function inPool(x, y) {
+      const dx = (x - POOL.x) / POOL.rx, dy = (y - POOL.y) / (POOL.ry * 1.3);
+      return dx * dx + dy * dy < 1;
+    }
 
     function refresh() { items = Save.mapItems(); }
 
@@ -129,10 +136,22 @@
         ctx.restore();
         // лужа
         ctx.save();
-        ctx.fillStyle = 'rgba(90,170,200,0.65)';
-        ctx.beginPath(); ctx.ellipse(360, 790, 160, 52, 0, 0, U.TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(70,140,170,0.35)';
+        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y + 6, POOL.rx + 10, POOL.ry + 8, 0, 0, U.TAU); ctx.fill();
+        const pg = ctx.createLinearGradient(0, POOL.y - POOL.ry, 0, POOL.y + POOL.ry);
+        pg.addColorStop(0, 'rgba(120,200,225,0.85)');
+        pg.addColorStop(1, 'rgba(56,130,165,0.9)');
+        ctx.fillStyle = pg;
+        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y, POOL.rx, POOL.ry, 0, 0, U.TAU); ctx.fill();
+        // блики на воде
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.beginPath(); ctx.ellipse(320, 778, 60, 14, -0.2, 0, U.TAU); ctx.fill();
+        for (let i = 0; i < 4; i++) {
+          const ph = t * 0.5 + i * 1.7;
+          ctx.beginPath();
+          ctx.ellipse(POOL.x - 90 + i * 62 + Math.sin(ph) * 10, POOL.y - 26 + i * 14,
+            34 + Math.sin(ph * 1.3) * 6, 6, -0.15, 0, U.TAU);
+          ctx.fill();
+        }
         ctx.restore();
         // кусты и деревья
         const bush = (x, y, r, col1, col2) => {
@@ -175,7 +194,7 @@
           ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
         }
         // камни
-        [[1080, 700, 46], [1160, 726, 30], [620, 880, 54]].forEach(([x, y, r], i) => {
+        [[1080, 700, 46], [1160, 726, 30], [700, 900, 54]].forEach(([x, y, r], i) => {
           const g = ctx.createLinearGradient(x, y - r, x, y + r);
           g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
           ctx.fillStyle = g;
@@ -186,9 +205,11 @@
         const order = items.map((it, i) => i).sort((a, b) => items[a].y - items[b].y);
         for (const i of order) {
           const it = items[i];
-          const bob = Math.sin(t * 1.6 + i) * 4;
+          const wet = inPool(it.x, it.y) && dragIdx !== i;
+          const bob = Math.sin(t * 1.6 + i) * (wet ? 2.5 : 4);
+          const sink = wet ? 26 : 0;
           SlugArt.draw(ctx, it.slug, {
-            x: it.x, y: it.y + bob, scale: it.scale || 0.5, t: t + i * 0.7,
+            x: it.x, y: it.y + bob + sink, scale: it.scale || 0.5, t: t + i * 0.7,
             squash: 1 + Math.sin(t * 1.9 + i) * 0.035,
             look: {
               x: U.clamp((App.pointer.x - it.x) / 420, -1, 1),
@@ -196,6 +217,34 @@
             },
             alpha: dragIdx === i ? 0.85 : 1
           });
+          // вода поверх нижней половины — слизень «стоит в луже»
+          if (wet) {
+            const sc = it.scale || 0.5;
+            const line = it.y + bob + sink + 14;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(it.x - 190 * sc, line, 380 * sc, 260);
+            ctx.clip();
+            const wg = ctx.createLinearGradient(0, POOL.y - POOL.ry, 0, POOL.y + POOL.ry);
+            wg.addColorStop(0, 'rgba(120,200,225,0.8)');
+            wg.addColorStop(1, 'rgba(56,130,165,0.88)');
+            ctx.fillStyle = wg;
+            ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y, POOL.rx, POOL.ry, 0, 0, U.TAU); ctx.fill();
+            ctx.restore();
+            // круги по воде
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 3;
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.5 + k * 0.33 + i * 0.2) % 1;
+              ctx.globalAlpha = (1 - ph) * 0.55;
+              ctx.beginPath();
+              ctx.ellipse(it.x, line + 2, (60 + ph * 90) * sc, (16 + ph * 24) * sc, 0, 0, U.TAU);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+
           // имя над слизнем
           const nick = it.slug.nick;
           if (nick && nick !== 'Слизень') {
@@ -301,6 +350,20 @@
             Save.mapRemove(dragIdx); refresh();
             Sfx.squish(0.6); App.toast('Слизень убран с карты');
           } else {
+            const it = items[dragIdx];
+            if (it && inPool(it.x, it.y)) {
+              const wasDry = (it.slug.fx.wet || 0) < 0.9;
+              SlugModel.apply(it.slug, 'shower', 1);
+              if (wasDry) {
+                Sfx.splash();
+                parts.emit(22, () => ({
+                  kind: 'drop', x: it.x + U.rand(-70, 70), y: it.y + 30,
+                  vx: U.rand(-180, 180), vy: U.rand(-320, -110), grav: 900,
+                  life: U.rand(0.4, 0.8), size: U.rand(3, 8), col: 'rgba(190,235,250,0.9)'
+                }));
+                App.toast((it.slug.nick && it.slug.nick !== 'Слизень' ? it.slug.nick : 'Слизень') + ' плюхнулся в лужу', '#9fdcff');
+              }
+            }
             Save.mapSave();
           }
           dragIdx = -1;
