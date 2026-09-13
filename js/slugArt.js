@@ -43,77 +43,69 @@
   /* ---------- силуэт ---------- */
   function bodyPts(slug, t, squash) {
     const f = slug.fx;
-    const harm = U.makeHarmonics(slug.seed, 4, 0.035 + f.blended * 0.13 + f.melt * 0.05);
+    const harm = U.makeHarmonics(slug.seed, 4, 0.03 + f.blended * 0.12 + f.melt * 0.05);
     const rx = RX * (1 + f.blended * 0.10) * (1 / squash);
-    const ry = RY * squash * (1 - f.melt * 0.16);
-    return U.blobPoints(0, 0, rx, ry, harm, t, 84, 0.86);
+    const ry = RY * squash * (1 - f.melt * 0.14);
+    return U.blobPoints(0, 0, rx, ry, harm, t, 84, 0.96);
+  }
+
+  /** мягкий мазок «кистью»: плотная середина и растушёванный край */
+  function stamp(g, x, y, r, col, a, hard = 0.72) {
+    const gr = g.createRadialGradient(x, y, r * hard * 0.4, x, y, r);
+    gr.addColorStop(0, U.colStr(col, a));
+    gr.addColorStop(hard, U.colStr(col, a));
+    gr.addColorStop(1, U.colStr(col, 0));
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r, 0, U.TAU); g.fill();
+  }
+
+  /** не рисуем отметины прямо на глазах, иначе их не видно */
+  function nearEye(x, y) {
+    return U.dist(x, y, -36, -2) < 34 || U.dist(x, y, 36, -5) < 34;
   }
 
   /* ---------- слои ---------- */
 
-  function layerBase(g, slug, t, pts) {
+  /**
+   * Тело — мягкое пятно, набитое растушёванными мазками,
+   * как будто нарисовано кистью: без чёткого контура и бликов.
+   */
+  function layerBody(g, slug, t, squash) {
     const c = bodyColor(slug);
     const f = slug.fx;
-
-    // основная заливка — мягкий градиент «сверху свет»
-    const grad = g.createRadialGradient(-RX * 0.35, -RY * 0.75, RY * 0.1, 0, 0, RX * 1.25);
-    grad.addColorStop(0, U.colStr(U.shade(c, 22, -6)));
-    grad.addColorStop(0.45, U.colStr(c));
-    grad.addColorStop(1, U.colStr(U.shade(c, -20, 6)));
-    g.fillStyle = grad;
-    U.smoothPath(g, pts);
-    g.fill();
-
-    // подповерхностное свечение (желе)
-    g.save();
-    g.globalCompositeOperation = 'lighter';
-    const sub = g.createRadialGradient(RX * 0.2, RY * 0.35, 6, RX * 0.1, RY * 0.2, RX * 0.95);
-    sub.addColorStop(0, U.colStr(U.shade(c, 26, 10), 0.40));
-    sub.addColorStop(1, U.colStr(c, 0));
-    g.fillStyle = sub;
-    g.fillRect(-RX * 1.4, -RY * 1.6, RX * 2.8, RY * 3.2);
-    g.restore();
-
-    // глянцевый ободок по краю (виден только внутренний край)
-    U.smoothPath(g, pts);
-    g.strokeStyle = `rgba(255,255,255,${0.16 + f.wet * 0.2})`;
-    g.lineWidth = 11;
-    g.stroke();
-
-    // светлая «нога» вдоль низа
-    const foot = g.createLinearGradient(0, RY * 0.34, 0, RY * 0.95);
-    foot.addColorStop(0, U.colStr(U.shade(c, 16, -12), 0));
-    foot.addColorStop(1, U.colStr(U.shade(c, 16, -12), 0.55));
-    g.fillStyle = foot;
-    g.fillRect(-RX * 1.4, -RY * 1.4, RX * 2.8, RY * 2.8);
-
-    // внутренняя тень по нижнему краю
-    const sh = g.createLinearGradient(0, RY * 0.1, 0, RY * 1.0);
-    sh.addColorStop(0, 'rgba(0,0,0,0)');
-    sh.addColorStop(1, 'rgba(0,0,0,0.30)');
-    g.fillStyle = sh;
-    g.fillRect(-RX * 1.4, -RY * 1.4, RX * 2.8, RY * 2.8);
-
-    // крапинки-текстура
     const rnd = U.mulberry32(slug.seed + 7);
-    g.globalAlpha = 0.16 * (1 - f.fried * 0.6);
-    for (let i = 0; i < 46; i++) {
-      const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.92;
-      const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.9;
-      const rr = 2 + rnd() * 5;
-      g.fillStyle = U.colStr(U.shade(c, -16, 8));
-      g.beginPath(); g.ellipse(x, y, rr, rr * 0.8, rnd() * 3, 0, U.TAU); g.fill();
-    }
-    g.globalAlpha = 1;
+    const wob = (i) => Math.sin(t * 0.7 + i * 1.7) * 0.03;
 
-    // блик сверху
     g.save();
-    const hl = g.createRadialGradient(-RX * 0.30, -RY * 0.62, 2, -RX * 0.30, -RY * 0.62, RX * 0.62);
-    hl.addColorStop(0, `rgba(255,255,255,${0.42 + f.wet * 0.35 - f.fried * 0.15})`);
-    hl.addColorStop(0.55, 'rgba(255,255,255,0.09)');
-    hl.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = hl;
-    g.beginPath(); g.ellipse(-RX * 0.30, -RY * 0.60, RX * 0.52, RY * 0.42, -0.25, 0, U.TAU); g.fill();
+    g.scale(1, (RY / RX) * squash * (1 - f.melt * 0.12));
+    const R = RX * (1 + f.blended * 0.08);
+
+    // плотная сердцевина
+    stamp(g, 0, 0, R * 0.92, c, 0.95, 0.74);
+
+    // мазки по краю — от них край мягкий и чуть неровный
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * U.TAU + rnd() * 0.14;
+      const rr = R * (0.52 + rnd() * 0.07 + wob(i) + f.blended * 0.07 * Math.sin(i * 2.3));
+      const br = R * (0.40 + rnd() * 0.07);
+      stamp(g, Math.cos(a) * rr, Math.sin(a) * rr, br, c, 0.95, 0.66);
+    }
+
+    // разводы светлее и темнее — «пятнистость» зелени
+    for (let i = 0; i < 9; i++) {
+      const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.6;
+      const light = rnd() > 0.45;
+      stamp(g,
+        Math.cos(a) * R * r, Math.sin(a) * R * r,
+        R * (0.22 + rnd() * 0.26),
+        U.shade(c, light ? 9 : -9, light ? -3 : 3),
+        0.26 + rnd() * 0.14, 0.25);
+    }
+
+    // лёгкое затемнение снизу, чтобы пятно не было плоским
+    stamp(g, 0, R * 0.40, R * 0.66, U.shade(c, -9, 2), 0.18, 0.2);
+
     g.restore();
   }
 
@@ -209,6 +201,7 @@
     for (let i = 0; i < n; i++) {
       const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.85;
       const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.95;
+      if (nearEye(x, y)) continue;
       const sz = (14 + rnd() * 30) * (0.5 + f.burns * 0.8);
       // обугленное пятно
       const harm = U.makeHarmonics((slug.seed + i * 17) | 0, 3, 0.3);
@@ -237,6 +230,7 @@
     for (let i = 0; i < n; i++) {
       const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.82;
       const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.9;
+      if (nearEye(x, y)) continue;
       const breathe = 1 + 0.07 * Math.sin(t * 2.4 + i * 1.7);
       const rr = (7 + rnd() * 13) * breathe;
       const bg = g.createRadialGradient(x - rr * 0.3, y - rr * 0.4, 1, x, y, rr);
@@ -255,12 +249,13 @@
     const f = slug.fx;
     if (f.wounds <= 0.03) return;
     const rnd = U.mulberry32(slug.seed + 41);
-    const n = Math.round(3 + f.wounds * 14);
+    const n = Math.round(3 + f.wounds * 10);
     g.save();
     g.lineCap = 'round';
     for (let i = 0; i < n; i++) {
       const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.86;
       const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.92;
+      if (nearEye(x, y)) continue;
       const ang = rnd() * U.TAU;
       const len = 12 + rnd() * 34;
       const dx = Math.cos(ang) * len * 0.5, dy = Math.sin(ang) * len * 0.5;
@@ -437,170 +432,56 @@
   }
 
   /* ---------- глаза ---------- */
-  function drawEye(g, x, y, r, look, slug, t, state, idx) {
-    const f = slug.fx;
-    const c = bodyColor(slug);
-    // белок
-    g.save();
-    U.shadowOn(g, 10, 'rgba(0,0,0,0.25)', 0, 3);
-    g.fillStyle = '#fbfbf8';
-    g.beginPath(); g.ellipse(x, y, r, r * 1.02, 0, 0, U.TAU); g.fill();
-    U.shadowOff(g);
-    // лёгкая тень сверху на белке
-    const sg = g.createLinearGradient(x, y - r, x, y + r);
-    sg.addColorStop(0, 'rgba(140,150,140,0.35)');
-    sg.addColorStop(0.5, 'rgba(255,255,255,0)');
-    g.fillStyle = sg;
-    g.beginPath(); g.ellipse(x, y, r, r * 1.02, 0, 0, U.TAU); g.fill();
-    g.restore();
-
-    const px = x + look.x * r * 0.34;
-    const py = y + look.y * r * 0.34;
-
-    if (state === 'dead') {
-      g.strokeStyle = '#2a2a2a'; g.lineWidth = r * 0.24; g.lineCap = 'round';
-      const s = r * 0.5;
-      g.beginPath(); g.moveTo(x - s, y - s); g.lineTo(x + s, y + s);
-      g.moveTo(x + s, y - s); g.lineTo(x - s, y + s); g.stroke();
-    } else {
-      // радужка
-      const irisR = r * 0.52;
-      const ig = g.createRadialGradient(px - irisR * 0.3, py - irisR * 0.3, 1, px, py, irisR);
-      const ic = U.shade(c, -18, 18);
-      ig.addColorStop(0, U.colStr(U.shade(ic, 20)));
-      ig.addColorStop(1, U.colStr(U.shade(ic, -18)));
-      g.fillStyle = ig;
-      g.beginPath(); g.arc(px, py, irisR, 0, U.TAU); g.fill();
-      // зрачок — расширяется от боли/страха
-      const dil = 1 + (1 - slug.mood) * 0.55 - (f.frozen * 0.2);
-      g.fillStyle = '#14100f';
-      g.beginPath(); g.arc(px, py, irisR * 0.52 * dil, 0, U.TAU); g.fill();
-      // блики
-      g.fillStyle = 'rgba(255,255,255,0.95)';
-      g.beginPath(); g.arc(px - irisR * 0.4, py - irisR * 0.45, r * 0.17, 0, U.TAU); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.55)';
-      g.beginPath(); g.arc(px + irisR * 0.35, py + irisR * 0.4, r * 0.09, 0, U.TAU); g.fill();
-    }
-
-    // веко — моргание / зажмуривание от боли
-    let lid = 0;
-    const blink = Math.sin(t * 0.9 + (slug.seed % 10));
-    if (blink > 0.985) lid = 1;
-    if (state === 'scream' || state === 'pain') lid = 0.55 + 0.25 * Math.sin(t * 9 + idx);
-    if (state === 'frozen') lid = 0.45;
-    if (lid > 0.01) {
-      g.save();
-      g.beginPath(); g.ellipse(x, y, r + 1, r * 1.04, 0, 0, U.TAU); g.clip();
-      g.fillStyle = U.colStr(U.shade(c, -6));
-      g.fillRect(x - r - 2, y - r - 2, r * 2 + 4, (r * 2 + 4) * lid * 0.55);
-      g.fillRect(x - r - 2, y + r + 2 - (r * 2 + 4) * lid * 0.55, r * 2 + 4, (r * 2 + 4) * lid * 0.55);
-      if (lid > 0.6) {
-        g.strokeStyle = U.colStr(U.shade(c, -30), 0.9);
-        g.lineWidth = r * 0.13; g.lineCap = 'round';
-        g.beginPath();
-        g.moveTo(x - r * 0.78, y);
-        g.quadraticCurveTo(x, y + r * 0.22, x + r * 0.78, y);
-        g.stroke();
-      }
-      g.restore();
-    }
-
-    // контур глаза
-    g.strokeStyle = U.colStr(U.shade(c, -26), 0.85);
-    g.lineWidth = 2;
-    g.beginPath(); g.ellipse(x, y, r, r * 1.02, 0, 0, U.TAU); g.stroke();
-
-    // слёзы при боли
-    if ((state === 'scream' || state === 'pain') && slug.alive) {
-      const tearPhase = (t * 1.6 + idx * 0.5) % 1;
-      g.fillStyle = 'rgba(150,215,245,0.85)';
-      g.beginPath();
-      g.ellipse(x - r * 0.55, y + r * 0.7 + tearPhase * r * 1.6, r * 0.16, r * 0.24, 0, 0, U.TAU);
-      g.fill();
-    }
-  }
-
-  /** позиции стебельков/глаз */
-  function stalkData(slug, t, look) {
-    const f = slug.fx;
-    const sway = Math.sin(t * 1.4) * 6;
-    const sway2 = Math.sin(t * 1.4 + 1.1) * 5;
-    const droop = (1 - slug.mood) * 20 + f.melt * 22;
-    return [
-      { bx: -52, by: -16, ex: -96 + look.x * 10 + sway, ey: -178 + droop + look.y * 8, r: 34, w: 30 },
-      { bx: 6, by: -26, ex: -2 + look.x * 12 + sway2, ey: -208 + droop + look.y * 9, r: 30, w: 26 }
+  /** Два чёрных глаза-точки прямо на теле — как на рисунке */
+  function drawEyes(g, slug, t, look, state) {
+    const eyes = [
+      { x: -36, y: -2, rx: 9.5, ry: 12, seed: slug.seed + 3 },
+      { x: 36, y: -5, rx: 10, ry: 12.5, seed: slug.seed + 9 }
     ];
-  }
+    const ox = look.x * 3.5, oy = look.y * 3;
+    const blink = Math.sin(t * 0.9 + (slug.seed % 10)) > 0.985 ? 1 : 0;
+    const ink = 'rgba(12,14,10,0.95)';
 
-  /** стебельки рисуются ПОД телом — так они естественно вырастают из спины */
-  function drawStalks(g, slug, t, look) {
-    const c = bodyColor(slug);
-    const stalks = stalkData(slug, t, look);
-    stalks.forEach((s, i) => {
-      const steps = 18;
-      const left = [], right = [];
-      for (let k = 0; k <= steps; k++) {
-        const u = k / steps;
-        const bend = Math.sin(u * Math.PI) * (14 + Math.sin(t * 1.7 + i * 2) * 9);
-        const x = U.lerp(s.bx, s.ex, U.easeOutCubic(u)) + bend * 0.45;
-        const y = U.lerp(s.by, s.ey, u * u * 0.35 + u * 0.65);
-        const w = U.lerp(s.w, s.r * 0.44, U.smooth(u));
-        left.push([x - w, y]); right.push([x + w, y]);
-      }
+    eyes.forEach((e, i) => {
+      const x = e.x + ox, y = e.y + oy;
       g.save();
-      g.beginPath();
-      g.moveTo(left[0][0], left[0][1]);
-      for (let k = 1; k <= steps; k++) g.lineTo(left[k][0], left[k][1]);
-      for (let k = steps; k >= 0; k--) g.lineTo(right[k][0], right[k][1]);
-      g.closePath();
-      const sg = g.createLinearGradient(s.ex - s.r, 0, s.ex + s.r, 0);
-      sg.addColorStop(0, U.colStr(U.shade(c, -14)));
-      sg.addColorStop(0.35, U.colStr(U.shade(c, 10)));
-      sg.addColorStop(1, U.colStr(U.shade(c, -22)));
-      g.fillStyle = sg;
-      g.fill();
-      g.strokeStyle = U.colStr(U.shade(c, -26), 0.6);
-      g.lineWidth = 2.5; g.stroke();
-      // продольный блик
-      g.strokeStyle = 'rgba(255,255,255,0.30)';
-      g.lineWidth = 5; g.lineCap = 'round';
-      g.beginPath();
-      for (let k = 2; k <= steps - 1; k++) {
-        const p = left[k];
-        if (k === 2) g.moveTo(p[0] + 9, p[1]); else g.lineTo(p[0] + 9, p[1]);
+      g.fillStyle = ink;
+      g.strokeStyle = ink;
+      g.lineCap = 'round';
+
+      if (state === 'dead') {
+        g.lineWidth = 4.5;
+        const s2 = e.rx * 1.1;
+        g.beginPath();
+        g.moveTo(x - s2, y - s2); g.lineTo(x + s2, y + s2);
+        g.moveTo(x + s2, y - s2); g.lineTo(x - s2, y + s2);
+        g.stroke();
+      } else if (state === 'scream' || state === 'pain') {
+        // зажмуренные глаза «^ ^»
+        g.lineWidth = 5;
+        g.beginPath();
+        g.moveTo(x - e.rx, y + e.ry * 0.45);
+        g.quadraticCurveTo(x, y - e.ry * 0.7, x + e.rx, y + e.ry * 0.45);
+        g.stroke();
+      } else {
+        const k = 1 - blink * 0.9;
+        const harm = U.makeHarmonics(e.seed, 3, 0.13);
+        U.smoothPath(g, U.blobPoints(x, y, e.rx, Math.max(e.ry * k, 1.2), harm, i * 3, 20, 1));
+        g.fill();
       }
-      g.stroke();
       g.restore();
     });
   }
 
-  function drawEyeballs(g, slug, t, look, state) {
-    const stalks = stalkData(slug, t, look);
-    stalks.forEach((s, i) => drawEye(g, s.ex, s.ey, s.r, look, slug, t, state, i));
-  }
-
+  /** Рот появляется, только когда слизень орёт */
   function drawMouth(g, slug, t, state) {
-    const c = bodyColor(slug);
-    const x = -26, y = 34;
+    if (state !== 'scream') return;
+    const open = 7 + Math.abs(Math.sin(t * 11)) * 8;
     g.save();
-    if (state === 'scream') {
-      const open = 14 + Math.sin(t * 12) * 6;
-      g.fillStyle = 'rgba(40,10,14,0.92)';
-      g.beginPath(); g.ellipse(x, y, 20, open + 14, 0.1, 0, U.TAU); g.fill();
-      g.fillStyle = '#c2564f';
-      g.beginPath(); g.ellipse(x, y + open * 0.5, 11, open * 0.42, 0, 0, U.TAU); g.fill();
-      g.strokeStyle = U.colStr(U.shade(c, -28)); g.lineWidth = 3;
-      g.beginPath(); g.ellipse(x, y, 20, open + 14, 0.1, 0, U.TAU); g.stroke();
-    } else if (state === 'dead') {
-      g.strokeStyle = 'rgba(40,20,20,0.8)'; g.lineWidth = 4; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(x - 16, y + 8); g.quadraticCurveTo(x, y - 8, x + 16, y + 8); g.stroke();
-    } else if (slug.mood > 0.65) {
-      g.strokeStyle = 'rgba(30,40,20,0.7)'; g.lineWidth = 4; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(x - 16, y - 4); g.quadraticCurveTo(x, y + 14, x + 16, y - 4); g.stroke();
-    } else {
-      g.strokeStyle = 'rgba(30,40,20,0.7)'; g.lineWidth = 4; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(x - 15, y + 6); g.quadraticCurveTo(x, y - 6, x + 15, y + 6); g.stroke();
-    }
+    g.fillStyle = 'rgba(12,14,10,0.9)';
+    g.beginPath();
+    g.ellipse(-4, 26, 11, open, 0, 0, U.TAU);
+    g.fill();
     g.restore();
   }
 
@@ -652,13 +533,13 @@
 
     const pts = bodyPts(slug, t, squash);
 
-    // стебельки глаз — под телом
-    drawStalks(g, slug, t, look);
+    // мягкое тело
+    layerBody(g, slug, t, squash);
 
-    // тело + слои, обрезанные силуэтом
+    // слои эффектов — внутри силуэта, чуть отступив от мягкого края
+    const inner = pts.map((p) => [p[0] * 0.86, p[1] * 0.86]);
     g.save();
-    U.smoothPath(g, pts); g.clip();
-    layerBase(g, slug, t, pts);
+    U.smoothPath(g, inner); g.clip();
     layerPills(g, slug, t);
     layerFried(g, slug, t);
     layerBurns(g, slug, t);
@@ -669,18 +550,10 @@
     layerFrost(g, slug, t);
     g.restore();
 
-    // контур
-    g.save();
-    U.smoothPath(g, pts);
-    g.strokeStyle = U.colStr(U.shade(bodyColor(slug), -22, 6), 0.75);
-    g.lineWidth = 3;
-    g.stroke();
-    g.restore();
-
     layerAcidHoles(g, slug, t);
     layerAcidGlow(g, slug, t);
 
-    drawEyeballs(g, slug, t, look, state);
+    drawEyes(g, slug, t, look, state);
     drawMouth(g, slug, t, state);
     drawIceBlock(g, slug, t);
 
@@ -696,7 +569,7 @@
       ctx.save();
       const sw = RX * drawScale * 1.05, sh = RY * drawScale * 0.34;
       const sg = ctx.createRadialGradient(0, RY * drawScale * 0.92, 2, 0, RY * drawScale * 0.92, sw);
-      sg.addColorStop(0, 'rgba(0,0,0,0.35)');
+      sg.addColorStop(0, 'rgba(0,0,0,0.22)');
       sg.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = sg;
       ctx.beginPath();

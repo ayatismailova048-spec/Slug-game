@@ -101,7 +101,7 @@
           y: U.clamp((App.pointer.y - 520) / 420, -1, 1)
         };
         SlugArt.draw(ctx, slug, {
-          x: px, y: 566 + Math.sin(bobPhase * 1.7) * 6, scale: 0.92, t,
+          x: px, y: 556 + Math.sin(bobPhase * 1.7) * 6, scale: 1.08, t,
           look, squash: 1 + Math.sin(bobPhase * 1.9) * 0.035
         });
 

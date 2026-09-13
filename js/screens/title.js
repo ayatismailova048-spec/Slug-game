@@ -57,7 +57,7 @@
         ctx.fillStyle = lg; ctx.fillRect(0, 0, App.VW, App.VH);
 
         SlugArt.draw(ctx, slug, {
-          x: App.VW / 2, y: 492, scale: 1.02, t,
+          x: App.VW / 2, y: 452, scale: 1.2, t,
           look: { x: U.clamp((App.pointer.x - App.VW / 2) / 500, -1, 1), y: U.clamp((App.pointer.y - 400) / 400, -1, 1) },
           squash: 1 + Math.sin(t * 1.6) * 0.03
         });

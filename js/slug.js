@@ -4,7 +4,7 @@
 (function (global) {
   'use strict';
 
-  const BASE_COLOR = { h: 104, s: 42, l: 50 };
+  const BASE_COLOR = { h: 108, s: 34, l: 47 };
 
   const PILLS = {
     violet: { name: 'Фиолетовая', col: { h: 276, s: 72, l: 45 }, effect: 'Щупальца-вены, слизень мутирует' },
