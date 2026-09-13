@@ -31,7 +31,7 @@
       fried: 0,     // сковорода
       crust: 0,     // корочка
       frozen: 0,    // лёд
-      iceBlock: 0,  // толстая глыба (мокрый + заморозка)
+      iceBlock: 0,  // сосульки (мокрый + заморозка)
       steam: 0      // горячий/парящий
     };
   }
@@ -172,7 +172,7 @@
     const f = slug.fx;
     const has = (k, v = 0.25) => f[k] >= v;
 
-    if (has('iceBlock', 0.4)) return 'Слизень во льду';
+    if (has('iceBlock', 0.4)) return 'Слизень в сосульках';
     if (has('frozen', 0.5) && has('fried', 0.4)) return 'Мороженое в панировке';
     if (has('frozen', 0.5)) return 'Замороженный слизень';
     if (has('bones', 0.6) && has('burns', 0.4)) return 'Обугленный скелет';
@@ -206,7 +206,7 @@
     push(f.fried > 0.15, 'Жареный', '#c2661f');
     push(f.crust > 0.3, 'Корочка', '#8e4a12');
     push(f.frozen > 0.15, 'Заморожен', '#9fd8f2');
-    push(f.iceBlock > 0.25, 'В глыбе льда', '#bfeaff');
+    push(f.iceBlock > 0.25, 'сосульки', '#bfeaff');
     slug.pills.forEach((p) => out.push({ label: PILLS[p].name.toLowerCase(), color: U.colStr(PILLS[p].col) }));
     return out;
   }

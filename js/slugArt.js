@@ -484,30 +484,73 @@
     g.restore();
   }
 
-  function drawIceBlock(g, slug, t) {
-    const f = slug.fx;
-    if (f.iceBlock <= 0.08) return;
-    const a = U.clamp(f.iceBlock, 0, 1);
-    const w = RX * 2.25, h = RY * 3.4;
-    g.save();
-    g.globalAlpha = 0.62 * a;
-    const gr = g.createLinearGradient(-w / 2, -h * 0.62, w / 2, h * 0.4);
-    gr.addColorStop(0, 'rgba(220,248,255,0.85)');
-    gr.addColorStop(0.45, 'rgba(150,210,240,0.45)');
-    gr.addColorStop(1, 'rgba(200,240,255,0.8)');
-    g.fillStyle = gr;
-    U.roundRect(g, -w / 2, -h * 0.62, w, h, 26);
-    g.fill();
-    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 4; g.stroke();
-    // грани и блики
-    g.globalAlpha = 0.55 * a;
-    g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 5; g.lineCap = 'round';
-    const rnd = U.mulberry32(slug.seed + 5);
-    for (let i = 0; i < 8; i++) {
-      const x1 = -w / 2 + rnd() * w, y1 = -h * 0.62 + rnd() * h;
-      g.beginPath(); g.moveTo(x1, y1);
-      g.lineTo(x1 + (rnd() * 60 - 30), y1 + (rnd() * 80 - 40)); g.stroke();
+  /** Сосульки на мокром замороженном слизне */
+  function drawIcicles(g, slug, t, pts) {
+    const v = U.clamp(slug.fx.iceBlock, 0, 1);
+    if (v <= 0.06) return;
+    const rnd = U.mulberry32(slug.seed + 123);
+
+    // берём точки нижней кромки тела
+    const bottom = pts.filter((p) => p[1] > RY * 0.2).sort((a, b) => a[0] - b[0]);
+    if (bottom.length < 3) return;
+
+    const n = Math.round(3 + v * 8);
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n + (rnd() - 0.5) * 0.08;
+      const p = bottom[U.clamp(Math.round(u * (bottom.length - 1)), 0, bottom.length - 1)];
+      const x = p[0], y = p[1] - 4;
+      const len = (18 + rnd() * 36) * (0.4 + v * 0.8);
+      const w = 5 + rnd() * 6;
+      const lean = (rnd() - 0.5) * 6;
+
+      g.save();
+      // сама сосулька
+      g.beginPath();
+      g.moveTo(x - w, y - 6);
+      g.quadraticCurveTo(x - w * 0.55, y + len * 0.55, x + lean, y + len);
+      g.quadraticCurveTo(x + w * 0.55, y + len * 0.55, x + w, y - 6);
+      g.closePath();
+      const gr = g.createLinearGradient(x - w, y, x + w, y + len);
+      gr.addColorStop(0, 'rgba(236,252,255,0.95)');
+      gr.addColorStop(0.45, 'rgba(168,216,240,0.8)');
+      gr.addColorStop(1, 'rgba(226,246,255,0.9)');
+      g.fillStyle = gr;
+      g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.9)';
+      g.lineWidth = 1.6;
+      g.stroke();
+      // блик вдоль сосульки
+      g.strokeStyle = 'rgba(255,255,255,0.85)';
+      g.lineWidth = 2;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(x - w * 0.35, y);
+      g.quadraticCurveTo(x - w * 0.2, y + len * 0.5, x + lean * 0.5, y + len * 0.78);
+      g.stroke();
+      g.restore();
+
+      // капля на кончике
+      const drip = (t * 0.6 + i * 0.37) % 1;
+      if (drip > 0.7) {
+        g.save();
+        g.globalAlpha = (1 - drip) / 0.3;
+        g.fillStyle = 'rgba(200,238,255,0.9)';
+        g.beginPath();
+        g.ellipse(x + lean, y + len + 5 + (drip - 0.7) * 24, 3, 4.4, 0, 0, U.TAU);
+        g.fill();
+        g.restore();
+      }
     }
+
+    // наледь по нижнему краю, из которой растут сосульки
+    g.save();
+    g.globalAlpha = 0.55 * v;
+    g.strokeStyle = 'rgba(226,248,255,0.95)';
+    g.lineWidth = 9;
+    g.lineCap = 'round';
+    g.beginPath();
+    bottom.forEach((p, i) => { if (i === 0) g.moveTo(p[0], p[1] - 3); else g.lineTo(p[0], p[1] - 3); });
+    g.stroke();
     g.restore();
   }
 
@@ -552,7 +595,7 @@
 
     drawEyes(g, slug, t, look, state);
     drawMouth(g, slug, t, state);
-    drawIceBlock(g, slug, t);
+    drawIcicles(g, slug, t, pts);
 
     g.restore();
 
