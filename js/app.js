@@ -81,12 +81,48 @@
     global.addEventListener('touchend', up, { passive: false });
     global.addEventListener('touchcancel', up, { passive: false });
     global.addEventListener('keydown', (e) => {
+      const tag = e.target && e.target.tagName;
+      if (App.naming || tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'Escape' && App.screenName !== 'hub' && App.screenName !== 'title') App.go('hub');
       if (e.key === 'm' || e.key === 'M') App.toggleMute();
       if (App.screen && App.screen.onKey) App.screen.onKey(e);
     });
     global.addEventListener('blur', () => { Sfx.stopAllLoops(); });
   }
+
+  /** Окошко ввода имени (обычный HTML — чтобы на телефоне вылезала клавиатура) */
+  App.askName = function (initial, cb) {
+    const box = document.getElementById('namebox');
+    const input = document.getElementById('nameInput');
+    const ok = document.getElementById('nameOk');
+    const cancel = document.getElementById('nameCancel');
+    if (!box || !input) { cb(initial || 'Слизень'); return; }
+
+    App.naming = true;
+    box.classList.toggle('rot', !!App.rot);
+    box.classList.remove('hidden');
+    input.value = initial || '';
+    setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 40);
+
+    const finish = (accepted) => {
+      App.naming = false;
+      box.classList.add('hidden');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      input.removeEventListener('keydown', onKey);
+      cb(accepted ? (input.value.trim().slice(0, 22) || initial || 'Слизень') : null);
+    };
+    const onOk = () => finish(true);
+    const onCancel = () => finish(false);
+    const onKey = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') finish(true);
+      if (e.key === 'Escape') finish(false);
+    };
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    input.addEventListener('keydown', onKey);
+  };
 
   App.toggleMute = function () {
     App.muted = !App.muted;

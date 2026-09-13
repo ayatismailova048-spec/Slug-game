@@ -31,7 +31,14 @@
         new UI.Btn({
           x: 240, y: 24, w: 300, h: 56, label: 'Выпустить текущего', icon: '🐌', font: 18,
           color: '#3fbf8f', dark: '#217e5e',
-          onClick: () => { spawn(App.slug); }
+          onClick: () => {
+            App.askName(App.slug.nick && App.slug.nick !== 'Слизень' ? App.slug.nick : SlugModel.title(App.slug), (name) => {
+              if (name === null) return;
+              const copy = SlugModel.clone(App.slug);
+              copy.nick = name;
+              spawn(copy);
+            });
+          }
         }),
         new UI.Btn({
           x: 556, y: 24, w: 290, h: 56, label: 'Из сохранений', icon: '💾', font: 18,
@@ -189,6 +196,18 @@
             },
             alpha: dragIdx === i ? 0.85 : 1
           });
+          // имя над слизнем
+          const nick = it.slug.nick;
+          if (nick && nick !== 'Слизень') {
+            ctx.save();
+            ctx.font = `800 18px ${U.FONT}`;
+            const nw = ctx.measureText(nick).width + 26;
+            const ny = it.y + bob - 110 * (it.scale || 0.5) - 26;
+            ctx.fillStyle = 'rgba(16,28,22,0.7)';
+            U.roundRect(ctx, it.x - nw / 2, ny - 16, nw, 32, 16); ctx.fill();
+            U.text(ctx, nick, it.x, ny, { size: 18, color: '#eafff0', weight: 800 });
+            ctx.restore();
+          }
           if (dragIdx === i) {
             ctx.save();
             ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 3;

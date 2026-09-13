@@ -5,7 +5,7 @@
   'use strict';
 
   const KEY = 'slugLab.save.v2';
-  const SLOTS = 6;
+  const SLOTS = 24;
 
   function blank() {
     return { slots: new Array(SLOTS).fill(null), map: [], mapSeen: false };
@@ -41,14 +41,26 @@
     }
   }
 
-  function setSlot(i, slug, thumb) {
+  function setSlot(i, slug, thumb, name) {
     load();
+    const copy = SlugModel.clone(slug);
+    if (name) copy.nick = name;
     data.slots[i] = {
-      slug: SlugModel.clone(slug),
+      slug: copy,
+      name: name || copy.nick || SlugModel.title(slug),
       title: SlugModel.title(slug),
       thumb: thumb || null,
       savedAt: Date.now()
     };
+    return persist();
+  }
+
+  function renameSlot(i, name) {
+    load();
+    const sl = data.slots[i];
+    if (!sl) return false;
+    sl.name = name;
+    if (sl.slug) sl.slug.nick = name;
     return persist();
   }
 
@@ -69,5 +81,5 @@
 
   function wipe() { data = blank(); persist(); }
 
-  global.Save = { load, persist, setSlot, getSlot, clearSlot, slots, mapItems, mapAdd, mapRemove, mapSave, mapClear, wipe, SLOTS };
+  global.Save = { load, persist, setSlot, renameSlot, getSlot, clearSlot, slots, mapItems, mapAdd, mapRemove, mapSave, mapClear, wipe, SLOTS };
 })(window);

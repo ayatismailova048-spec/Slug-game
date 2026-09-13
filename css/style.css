@@ -43,3 +43,33 @@ html, body {
   cursor: pointer; transition: transform .1s ease, box-shadow .1s ease;
 }
 #bootBtn:active { transform: translateY(6px); box-shadow: 0 2px 0 #17624a, 0 6px 14px rgba(0,0,0,.45); }
+
+/* окошко ввода имени */
+#namebox {
+  position: fixed; inset: 0; z-index: 15;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 16, 13, .62);
+  transition: opacity .18s ease;
+}
+#namebox.hidden { opacity: 0; visibility: hidden; }
+.name-card {
+  background: #f3f7f2; border-radius: 22px; padding: 26px 28px 22px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  width: min(420px, 86vw); text-align: center;
+}
+#namebox.rot .name-card { transform: rotate(90deg); }
+.name-title { font-size: 22px; font-weight: 800; color: #1d2a24; margin-bottom: 16px; }
+#nameInput {
+  width: 100%; box-sizing: border-box; font: 700 22px "Nunito", "Trebuchet MS", sans-serif;
+  color: #1d2a24; background: #fff; border: 3px solid #bcd0c4; border-radius: 14px;
+  padding: 12px 14px; outline: none; text-align: center;
+}
+#nameInput:focus { border-color: #3fbf8f; }
+.name-btns { display: flex; gap: 12px; margin-top: 18px; }
+.name-btns button {
+  flex: 1; font: 800 18px "Nunito", "Trebuchet MS", sans-serif; color: #fff;
+  border: none; border-radius: 14px; padding: 14px 10px; cursor: pointer;
+}
+#nameOk { background: linear-gradient(#3fbf8f, #227e5e); box-shadow: 0 5px 0 #17624a; }
+#nameCancel { background: linear-gradient(#8e9b93, #5f6d66); box-shadow: 0 5px 0 #46524c; }
+.name-btns button:active { transform: translateY(4px); box-shadow: none; }
