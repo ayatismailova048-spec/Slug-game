@@ -22,7 +22,7 @@
       update(dt) {
         t += dt; hold.tw.update(dt); parts.update(dt);
         Sfx.loop('water', true, 0.9);
-        hold.hold(TUB.x, TUB.y - 30 + Math.sin(t * 1.6) * 5, 0.7);
+        hold.hold(TUB.x, TUB.y + 6 + Math.sin(t * 1.6) * 5, 0.72);
 
         parts.emit(5, () => ({
           kind: 'drop', x: TUB.x + U.rand(-150, 150), y: 316,
@@ -83,6 +83,7 @@
         U.shadowOff(ctx);
         ctx.restore();
 
+        // внутренняя чаша
         ctx.save();
         U.roundRect(ctx, TUB.x - TUB.w / 2 + 18, TUB.y - 44, TUB.w - 36, TUB.h + 26, 80);
         ctx.clip();
@@ -90,9 +91,20 @@
         inner.addColorStop(0, '#d7e5e8'); inner.addColorStop(0.45, '#f2f8f9'); inner.addColorStop(1, '#bed2d6');
         ctx.fillStyle = inner;
         ctx.fillRect(TUB.x - TUB.w / 2, TUB.y - 60, TUB.w, TUB.h + 80);
-        if (hold.inside || hold.tw.x > TUB.x - 320) drawSlug(ctx);
-        FX.drawLiquidSurface(ctx, TUB.x, TUB.y + 40, TUB.w, t, 'rgba(120,205,238,0.5)', 'rgba(30,120,160,0.6)', 5, 0.03);
-        parts.draw(ctx);
+        ctx.fillStyle = '#9fb2b6';
+        ctx.beginPath(); ctx.ellipse(TUB.x, TUB.y + TUB.h - 40, 30, 11, 0, 0, U.TAU); ctx.fill();
+        ctx.fillStyle = '#7d9195';
+        ctx.beginPath(); ctx.ellipse(TUB.x, TUB.y + TUB.h - 40, 17, 6, 0, 0, U.TAU); ctx.fill();
+        ctx.restore();
+
+        // слизень — рисуем поверх ванны целиком, чтобы его не обрезало бортом
+        drawSlug(ctx);
+
+        // вода спереди: нижняя половина слизня оказывается под водой
+        ctx.save();
+        U.roundRect(ctx, TUB.x - TUB.w / 2 + 18, TUB.y - 44, TUB.w - 36, TUB.h + 26, 80);
+        ctx.clip();
+        FX.drawLiquidSurface(ctx, TUB.x, TUB.y + 46, TUB.w, t, 'rgba(120,205,238,0.55)', 'rgba(30,120,160,0.65)', 5, 0.03);
         ctx.restore();
 
         ctx.save();
@@ -105,7 +117,7 @@
         U.roundRect(ctx, TUB.x + TUB.w / 2 - 90, TUB.y + TUB.h, 44, 50, 14); ctx.fill();
         ctx.restore();
 
-        if (!hold.inside && hold.tw.x <= TUB.x - 320) drawSlug(ctx);
+        parts.draw(ctx);
       },
 
       onDown(p) { hold.grab(p); },
