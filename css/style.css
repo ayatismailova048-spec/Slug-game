@@ -58,6 +58,6 @@ html, body {
   60%, 100% { transform: rotate(-90deg); }
 }
 #rotate p { font-size: 20px; font-weight: 800; line-height: 1.5; margin-top: 20px; }
-@media (orientation: portrait) and (max-width: 900px) {
+@media (orientation: portrait) and (max-width: 900px) and (pointer: coarse) {
   #rotate { display: flex; }
 }
