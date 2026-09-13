@@ -11,6 +11,7 @@
     let dragIdx = -1, dx = 0, dy = 0;
     let pickerOpen = false;
     let items = [];
+    let saveTimer = 0;
     const parts = new FX.Particles(300);
     const TRASH = { x: 1420, y: 830, r: 62 };
     const POOL = { x: 380, y: 800, rx: 215, ry: 72 };
@@ -75,6 +76,33 @@
       update(dt) {
         t += dt;
         parts.update(dt);
+
+        // на траве слизень обсыхает: капли стекают, и он снова обычный
+        let changed = false;
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          const f = it.slug.fx;
+          const submerged = inPool(it.x, it.y) && dragIdx !== i;
+          if (submerged || !f || (f.wet || 0) <= 0) continue;
+          const sc = it.scale || 0.5;
+          // капля срывается с брюшка
+          if (Math.random() < dt * 3.2 * f.wet) {
+            parts.add({
+              kind: 'drop', x: it.x + U.rand(-110, 110) * sc, y: it.y + 46 * sc,
+              vx: U.rand(-12, 12), vy: U.rand(40, 130), grav: 900,
+              life: U.rand(0.45, 0.8), size: U.rand(3, 6), col: 'rgba(180,232,250,0.9)'
+            });
+          }
+          f.wet = Math.max(0, f.wet - dt * 0.1);
+          f.clean = Math.max(0, (f.clean || 0) - dt * 0.06);
+          f.steam = Math.max(0, (f.steam || 0) - dt * 0.2);
+          changed = true;
+        }
+        if (changed) {
+          saveTimer -= dt;
+          if (saveTimer <= 0) { Save.mapSave(); saveTimer = 2.5; }
+        }
+
         back.update(dt, App.pointer, App.pointer.down);
         btns.forEach((b) => b.update(dt, App.pointer, App.pointer.down));
       },
