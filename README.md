@@ -24,9 +24,11 @@ python3 -m http.server 8000
 Игра — это PWA: её можно поставить на телефон или компьютер, и она будет
 работать офлайн, со своей иконкой и названием **Slug**, без адресной строки.
 
-1. Репозиторий публикуется на GitHub Pages сам (workflow `.github/workflows/pages.yml`).
-   Ссылка: `https://<владелец>.github.io/Slug/`
-   Если Pages ещё не включены — **Settings → Pages → Source: GitHub Actions**.
+1. Включи GitHub Pages — это делается один раз:
+   **Settings → Pages → Source: «Deploy from a branch» → ветка с игрой → папка `/ (root)` → Save.**
+   Через минуту сайт будет по адресу `https://<владелец>.github.io/Slug/`.
+   (Если выбрать источник «GitHub Actions», публиковать будет workflow
+   `.github/workflows/pages.yml` — он уже лежит в репозитории.)
 2. Открой эту ссылку в браузере.
 3. **Android / Chrome:** внизу справа появится кнопка «Установить» (или меню ⋮ →
    «Установить приложение»).

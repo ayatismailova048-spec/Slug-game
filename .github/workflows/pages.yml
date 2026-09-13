@@ -1,4 +1,6 @@
-# Публикует игру на GitHub Pages, чтобы её можно было установить как приложение
+# Публикует игру на GitHub Pages, чтобы её можно было установить как приложение.
+# Работает, если в Settings → Pages выбран источник «GitHub Actions».
+# Пока источник не выбран, шаги просто пропускаются и сборка остаётся зелёной.
 name: Publish to GitHub Pages
 
 on:
@@ -23,11 +25,25 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+
+      - id: pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
         with:
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+
+      - name: Подсказка, если Pages ещё не включены
+        if: steps.pages.outcome != 'success'
+        run: |
+          echo "GitHub Pages ещё не включены для этого репозитория."
+          echo "Включи их один раз: Settings → Pages → Source: GitHub Actions,"
+          echo "после этого игра будет публиковаться сама при каждом пуше."
+
+      - if: steps.pages.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
       - id: deploy
+        if: steps.pages.outcome == 'success'
         uses: actions/deploy-pages@v4
