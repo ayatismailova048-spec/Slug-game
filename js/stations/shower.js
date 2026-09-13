@@ -32,11 +32,11 @@
 
         if (hold.inside && !hold.held) {
           SlugModel.apply(App.slug, 'shower', dt * 0.45);
-          if (Math.random() < dt * 26) {
+          if (Math.random() < dt * 11) {
             parts.add({
-              kind: 'bubble', x: hold.tw.x + U.rand(-90, 90), y: hold.tw.y + U.rand(-20, 30),
-              vy: U.rand(-60, -20), vx: U.rand(-20, 20), life: U.rand(1, 2.4),
-              size: U.rand(4, 14), col: 'rgba(255,255,255,0.9)', alpha: 0.9
+              kind: 'bubble', x: hold.tw.x + U.rand(-110, 110), y: hold.tw.y + U.rand(10, 50),
+              vy: U.rand(-55, -18), vx: U.rand(-20, 20), life: U.rand(1, 2.2),
+              size: U.rand(4, 11), col: 'rgba(255,255,255,0.85)', alpha: 0.85
             });
           }
         }
@@ -97,16 +97,6 @@
         ctx.beginPath(); ctx.ellipse(TUB.x, TUB.y + TUB.h - 40, 17, 6, 0, 0, U.TAU); ctx.fill();
         ctx.restore();
 
-        // слизень — рисуем поверх ванны целиком, чтобы его не обрезало бортом
-        drawSlug(ctx);
-
-        // вода спереди: нижняя половина слизня оказывается под водой
-        ctx.save();
-        U.roundRect(ctx, TUB.x - TUB.w / 2 + 18, TUB.y - 44, TUB.w - 36, TUB.h + 26, 80);
-        ctx.clip();
-        FX.drawLiquidSurface(ctx, TUB.x, TUB.y + 46, TUB.w, t, 'rgba(120,205,238,0.55)', 'rgba(30,120,160,0.65)', 5, 0.03);
-        ctx.restore();
-
         ctx.save();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 18;
         U.roundRect(ctx, TUB.x - TUB.w / 2, TUB.y - 60, TUB.w, TUB.h + 60, 96); ctx.stroke();
@@ -115,6 +105,16 @@
         ctx.fillStyle = '#dbe7e9';
         U.roundRect(ctx, TUB.x - TUB.w / 2 + 46, TUB.y + TUB.h, 44, 50, 14); ctx.fill();
         U.roundRect(ctx, TUB.x + TUB.w / 2 - 90, TUB.y + TUB.h, 44, 50, 14); ctx.fill();
+        ctx.restore();
+
+        // слизень — рисуем поверх ванны целиком, чтобы его не обрезало бортом
+        drawSlug(ctx);
+
+        // вода спереди: нижняя половина слизня оказывается под водой
+        ctx.save();
+        U.roundRect(ctx, TUB.x - TUB.w / 2 + 18, TUB.y - 44, TUB.w - 36, TUB.h + 26, 80);
+        ctx.clip();
+        FX.drawLiquidSurface(ctx, TUB.x, TUB.y + 46, TUB.w, t, 'rgba(120,205,238,0.55)', 'rgba(30,120,160,0.65)', 5, 0.03);
         ctx.restore();
 
         parts.draw(ctx);
