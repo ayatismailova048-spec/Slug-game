@@ -8,7 +8,10 @@
   const SLOTS = 24;
 
   function blank() {
-    return { slots: new Array(SLOTS).fill(null), map: [], mapSeen: false };
+    return {
+      slots: new Array(SLOTS).fill(null), map: [], mapSeen: false,
+      env: { time: 'day', weather: 'clear', season: 'summer' }
+    };
   }
 
   let data = null;
@@ -24,6 +27,7 @@
         old.forEach((s, i) => (data.slots[i] = s));
       }
       if (!Array.isArray(data.map)) data.map = [];
+      if (!data.env) data.env = { time: 'day', weather: 'clear', season: 'summer' };
     } catch (e) {
       console.warn('Не удалось прочитать сохранение:', e);
       data = blank();
@@ -68,6 +72,9 @@
   function clearSlot(i) { load(); data.slots[i] = null; return persist(); }
   function slots() { load(); return data.slots; }
 
+  function getEnv() { load(); return data.env; }
+  function setEnv(patch) { load(); Object.assign(data.env, patch); persist(); }
+
   function mapItems() { load(); return data.map; }
   function mapAdd(slug, x, y) {
     load();
@@ -81,5 +88,5 @@
 
   function wipe() { data = blank(); persist(); }
 
-  global.Save = { load, persist, setSlot, renameSlot, getSlot, clearSlot, slots, mapItems, mapAdd, mapRemove, mapSave, mapClear, wipe, SLOTS };
+  global.Save = { load, persist, getEnv, setEnv, setSlot, renameSlot, getSlot, clearSlot, slots, mapItems, mapAdd, mapRemove, mapSave, mapClear, wipe, SLOTS };
 })(window);
