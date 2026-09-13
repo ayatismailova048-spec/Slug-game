@@ -36,7 +36,6 @@
     if (f.soot > 0) c = U.mixHsl(c, { h: 30, s: 8, l: 18 }, U.clamp(f.soot * 0.35, 0, 0.45));
     if (f.frozen > 0) c = U.mixHsl(c, { h: 196, s: 46, l: 68 }, U.clamp(f.frozen * 0.55, 0, 0.6));
     if (f.melt > 0) c = U.mixHsl(c, { h: 100, s: 30, l: 38 }, U.clamp(f.melt * 0.3, 0, 0.3));
-    if (!slug.alive) c = U.mixHsl(c, { h: 100, s: 10, l: 42 }, 0.45);
     return c;
   }
 
@@ -456,14 +455,7 @@
       g.strokeStyle = ink;
       g.lineCap = 'round';
 
-      if (state === 'dead') {
-        g.lineWidth = 4.5;
-        const s2 = e.rx * 1.1;
-        g.beginPath();
-        g.moveTo(x - s2, y - s2); g.lineTo(x + s2, y + s2);
-        g.moveTo(x + s2, y - s2); g.lineTo(x - s2, y + s2);
-        g.stroke();
-      } else if (state === 'scream' || state === 'pain') {
+      if (state === 'scream' || state === 'pain') {
         // зажмуренные глаза «^ ^»
         g.lineWidth = 5;
         g.beginPath();
@@ -522,7 +514,7 @@
   /* ---------- главный вызов ---------- */
   /**
    * opts: {x,y,scale,t,look:{x,y},state,squash,rot,alpha,shadow}
-   * state: 'idle' | 'scream' | 'pain' | 'dead' | 'frozen'
+   * state: 'idle' | 'scream' | 'pain' | 'frozen'
    */
   function draw(ctx, slug, opts = {}) {
     const {
@@ -530,8 +522,7 @@
       squash = 1, rot = 0, alpha = 1, shadow = true
     } = opts;
     let state = opts.state || 'idle';
-    if (!slug.alive) state = 'dead';
-    else if (slug.fx.frozen > 0.5 && state === 'idle') state = 'frozen';
+    if (slug.fx.frozen > 0.5 && state === 'idle') state = 'frozen';
 
     const sizeMul = slug.size || 1;
     const g = ensureBuf(scale * sizeMul * (global.App ? App.dpr : 1));

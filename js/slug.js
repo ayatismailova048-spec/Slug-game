@@ -143,9 +143,9 @@
         break;
     }
 
-    slug.hp = U.clamp(slug.hp, 0, 100);
+    slug.hp = U.clamp(slug.hp, 6, 100);
     slug.mood = U.clamp(slug.mood, 0, 1);
-    slug.alive = slug.hp > 0;
+    slug.alive = true;
     const last = slug.history[slug.history.length - 1];
     if (last !== kind) slug.history.push(kind);
     return slug;
