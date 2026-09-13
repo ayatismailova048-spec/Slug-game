@@ -15,13 +15,14 @@
     const parts = new FX.Particles(300);
     const TRASH = { x: 1512, y: 918, r: 58 };
     const POOL = { x: 330, y: 862, rx: 200, ry: 64 };
-    const TREE = { x: 1240, base: 952 };
-    const FIRE = { x: 812, y: 892 };
+    const TREE = { x: 700, base: 952 };
+    const FIRE = { x: 1210, y: 884 };
+    const STUMPS = [{ x: 1030, y: 906 }, { x: 1392, y: 906 }];
 
     /** места, куда можно посадить слизня: ветки дерева и брёвна у костра */
     const SPOTS = [
-      { x: 1104, y: 560 }, { x: 1408, y: 606 }, { x: 1136, y: 688 },   // ветки
-      { x: 648, y: 828 }, { x: 976, y: 828 }                            // брёвна
+      { x: TREE.x - 136, y: 560 }, { x: TREE.x + 168, y: 606 }, { x: TREE.x - 104, y: 688 }, // ветки
+      { x: STUMPS[0].x, y: 716 }, { x: STUMPS[1].x, y: 716 }                                  // брёвна
     ];
 
     function freeSpot(x, y, selfIdx) {
@@ -118,8 +119,18 @@
               life: U.rand(0.45, 0.8), size: U.rand(3, 6), col: 'rgba(180,232,250,0.9)'
             });
           }
-          f.wet = Math.max(0, f.wet - dt * 0.1);
-          f.clean = Math.max(0, (f.clean || 0) - dt * 0.06);
+          // рядом с костром сохнет куда быстрее и парит
+          const nearFire = U.dist(it.x, it.y, FIRE.x, FIRE.y) < 320;
+          const rate = nearFire ? 0.55 : 0.1;
+          if (nearFire && Math.random() < dt * 14 * f.wet) {
+            parts.add({
+              kind: 'steam', x: it.x + U.rand(-70, 70) * sc, y: it.y - 20 * sc,
+              vx: U.rand(-16, 16), vy: U.rand(-70, -34), life: U.rand(0.9, 1.8),
+              size: U.rand(10, 22), alpha: 0.5
+            });
+          }
+          f.wet = Math.max(0, f.wet - dt * rate);
+          f.clean = Math.max(0, (f.clean || 0) - dt * rate * 0.6);
           f.steam = Math.max(0, (f.steam || 0) - dt * 0.2);
           changed = true;
         }
@@ -245,9 +256,9 @@
           bush(x - 46 * s, y - 118 * s, 50 * s, '#66a64e', '#457a34');
           ctx.restore();
         };
-        tree(140, 690, 0.72);
-        bush(1010, 668, 40, '#6fb054', '#4c8339');
-        bush(300, 700, 44, '#6fb054', '#4c8339');
+        tree(150, 676, 0.6);
+        bush(980, 662, 38, '#6fb054', '#4c8339');
+        bush(380, 694, 40, '#6fb054', '#4c8339');
         // цветы
         const frnd = U.mulberry32(77);
         for (let i = 0; i < 40; i++) {
@@ -262,7 +273,7 @@
           ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
         }
         // камни
-        [[520, 700, 42], [470, 722, 28], [1520, 760, 50]].forEach(([x, y, r], i) => {
+        [[300, 720, 40], [252, 740, 26], [1540, 690, 44]].forEach(([x, y, r], i) => {
           const g = ctx.createLinearGradient(x, y - r, x, y + r);
           g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
           ctx.fillStyle = g;
@@ -524,9 +535,9 @@
         ctx.quadraticCurveTo(bx - dir * len * 0.35, by + 14, bx + dir * len * 0.55, by - 2);
         ctx.stroke();
       };
-      branch(1104, 606, 150, -1, 26);
-      branch(1408, 652, 150, 1, 26);
-      branch(1136, 734, 130, -1, 22);
+      branch(x - 136, 606, 150, -1, 26);
+      branch(x + 168, 652, 150, 1, 26);
+      branch(x - 104, 734, 130, -1, 22);
 
       // крона
       const leaf = (lx, ly, r, c1, c2) => {
@@ -540,7 +551,7 @@
         leaf(x + ox, oy, r, i % 2 ? '#77b85c' : '#6aad50', i % 2 ? '#4f8b3a' : '#477f33');
       });
       // листики на ветках
-      [[1028, 590], [1478, 636], [1052, 718]].forEach(([lx, ly], i) => {
+      [[x - 212, 590], [x + 238, 636], [x - 188, 718]].forEach(([lx, ly], i) => {
         leaf(lx, ly, 30 + (i % 2) * 6, '#7cbf60', '#549240');
       });
       ctx.restore();
@@ -571,39 +582,50 @@
       // жар
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const cg = ctx.createRadialGradient(x, y - 6, 4, x, y - 6, 130);
+      const cg = ctx.createRadialGradient(x, y - 6, 4, x, y - 6, 150);
       cg.addColorStop(0, 'rgba(255,150,50,0.5)');
       cg.addColorStop(1, 'rgba(255,90,20,0)');
       ctx.fillStyle = cg;
-      ctx.beginPath(); ctx.ellipse(x, y - 6, 130, 40, 0, 0, U.TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x, y - 6, 150, 46, 0, 0, U.TAU); ctx.fill();
       ctx.restore();
-      FX.drawFire(ctx, x, y - 10, 74, 150, t, 1, 5, true);
+      FX.drawFire(ctx, x, y - 10, 92, 186, t, 1, 5, true);
       ctx.restore();
 
-      // брёвна-скамейки
-      const log = (lx, ly, w) => {
+      // брёвна стоят вертикально — как табуретки
+      STUMPS.forEach((st, i) => {
+        const w = 104, h = 150;
+        const topY = st.y - h;
         ctx.save();
-        ctx.fillStyle = 'rgba(0,0,0,0.16)';
-        ctx.beginPath(); ctx.ellipse(lx, ly + 30, w * 0.55, 15, 0, 0, U.TAU); ctx.fill();
-        const lg = ctx.createLinearGradient(0, ly - 26, 0, ly + 26);
-        lg.addColorStop(0, '#8a6236'); lg.addColorStop(1, '#5b3d1f');
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath(); ctx.ellipse(st.x, st.y + 6, w * 0.66, 17, 0, 0, U.TAU); ctx.fill();
+        // бок
+        const lg = ctx.createLinearGradient(st.x - w / 2, 0, st.x + w / 2, 0);
+        lg.addColorStop(0, '#5b3d1f'); lg.addColorStop(0.45, '#8a6236'); lg.addColorStop(1, '#4a2f16');
         ctx.fillStyle = lg;
-        U.roundRect(ctx, lx - w / 2, ly - 26, w, 52, 26); ctx.fill();
-        ctx.fillStyle = '#c8a06a';
-        ctx.beginPath(); ctx.ellipse(lx - w / 2 + 4, ly, 13, 26, 0, 0, U.TAU); ctx.fill();
-        ctx.strokeStyle = 'rgba(120,88,44,0.8)'; ctx.lineWidth = 2;
-        for (let k = 1; k < 4; k++) {
-          ctx.beginPath(); ctx.ellipse(lx - w / 2 + 4, ly, 3 + k * 3, 6 + k * 6, 0, 0, U.TAU); ctx.stroke();
-        }
-        ctx.strokeStyle = 'rgba(70,46,20,0.5)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(st.x - w / 2, topY);
+        ctx.lineTo(st.x - w / 2, st.y);
+        ctx.quadraticCurveTo(st.x, st.y + 22, st.x + w / 2, st.y);
+        ctx.lineTo(st.x + w / 2, topY);
+        ctx.closePath(); ctx.fill();
+        // кора
+        ctx.strokeStyle = 'rgba(62,40,18,0.5)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
         for (let k = 0; k < 4; k++) {
-          const yy = ly - 14 + k * 9;
-          ctx.beginPath(); ctx.moveTo(lx - w / 2 + 30, yy); ctx.lineTo(lx + w / 2 - 20, yy + 2); ctx.stroke();
+          const ox = -34 + k * 22;
+          ctx.beginPath();
+          ctx.moveTo(st.x + ox, topY + 14);
+          ctx.lineTo(st.x + ox + (k % 2 ? 4 : -4), st.y - 8);
+          ctx.stroke();
+        }
+        // спил сверху — сюда садится слизень
+        ctx.fillStyle = '#d2a972';
+        ctx.beginPath(); ctx.ellipse(st.x, topY, w / 2, 20, 0, 0, U.TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(140,100,54,0.75)'; ctx.lineWidth = 2;
+        for (let k = 1; k <= 4; k++) {
+          ctx.beginPath(); ctx.ellipse(st.x, topY, (w / 2) * (k / 5), 20 * (k / 5), 0, 0, U.TAU); ctx.stroke();
         }
         ctx.restore();
-      };
-      log(648, 872, 250);
-      log(976, 872, 250);
+      });
     }
   });
 })(window);
