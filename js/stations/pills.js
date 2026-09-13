@@ -5,8 +5,8 @@
   'use strict';
 
   const GROUND = 830;
-  const HOME = { x: 560, y: 700, s: 0.95 };
-  const ORDER = ['violet', 'yellow', 'blue', 'cyan'];
+  const HOME = { x: 520, y: 700, s: 0.95 };
+  const ORDER = ['violet', 'yellow', 'blue', 'cyan', 'red', 'orange', 'pink', 'green'];
 
   StationImpl.pills = function () {
     let t = 0, held = null, hx = 0, hy = 0;
@@ -16,9 +16,13 @@
     let tray = [];
 
     function build() {
+      const POS = [
+        [980, 730], [1165, 712], [1345, 735], [1505, 710],
+        [1010, 858], [1195, 886], [1375, 852], [1515, 882]
+      ];
       tray = ORDER.map((k, i) => ({
         key: k, p: SlugModel.PILLS[k],
-        x: [1030, 1280, 1080, 1340][i], y: [770, 730, 890, 850][i], taken: false
+        x: POS[i][0], y: POS[i][1], taken: false
       }));
     }
 
@@ -77,9 +81,9 @@
           const bob = Math.sin(t * 2 + i) * 3;
           ctx.save();
           ctx.fillStyle = 'rgba(0,0,0,0.10)';
-          ctx.beginPath(); ctx.ellipse(s.x, s.y + 52, 64, 15, 0, 0, U.TAU); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(s.x, s.y + 44, 54, 13, 0, 0, U.TAU); ctx.fill();
           ctx.restore();
-          capsule(ctx, s.x, s.y + bob, s.key, 1.2, -0.35 + i * 0.2);
+          capsule(ctx, s.x, s.y + bob, s.key, 1.0, -0.4 + (i % 4) * 0.22);
         });
 
         const eating = swallow > 0.05;
@@ -107,12 +111,12 @@
           const u = 1 - swallow;
           capsule(ctx, U.lerp(hx, hold.tw.x, u), U.lerp(hy, hold.tw.y + 10, u), swallowKey, 1 - u * 0.85, u * 3);
         }
-        if (held) capsule(ctx, hx, hy, held, 1.3, Math.sin(t * 5) * 0.12);
+        if (held) capsule(ctx, hx, hy, held, 1.2, Math.sin(t * 5) * 0.12);
       },
 
       onDown(p) {
         for (const s of tray) {
-          if (U.dist(p.x, p.y, s.x, s.y) < 95) { held = s.key; hx = p.x; hy = p.y; Sfx.click(1.2); return; }
+          if (U.dist(p.x, p.y, s.x, s.y) < 72) { held = s.key; hx = p.x; hy = p.y; Sfx.click(1.2); return; }
         }
         hold.grab(p);
       },

@@ -10,7 +10,11 @@
     violet: { name: 'Фиолетовая', col: { h: 276, s: 72, l: 45 }, effect: 'Щупальца-вены, слизень мутирует' },
     yellow: { name: 'Жёлтая',     col: { h: 44,  s: 92, l: 52 }, effect: 'Раздувает: слизень растёт' },
     blue:   { name: 'Синяя',      col: { h: 224, s: 78, l: 50 }, effect: 'Сжимает: слизень уменьшается' },
-    cyan:   { name: 'Голубая',    col: { h: 196, s: 82, l: 55 }, effect: 'Лечит раны и ожоги' }
+    cyan:   { name: 'Голубая',    col: { h: 196, s: 82, l: 55 }, effect: 'Лечит раны и ожоги' },
+    red:    { name: 'Красная',    col: { h: 2,   s: 80, l: 50 }, effect: 'Жгучая: слизень краснеет и злится' },
+    orange: { name: 'Оранжевая',  col: { h: 26,  s: 92, l: 54 }, effect: 'Согревает: лёд тает' },
+    pink:   { name: 'Розовая',    col: { h: 330, s: 82, l: 66 }, effect: 'Счастье: слизень радуется' },
+    green:  { name: 'Зелёная',    col: { h: 128, s: 62, l: 42 }, effect: 'Смывает все таблетки, цвет как был' }
   };
 
   function freshEffects() {
@@ -119,6 +123,18 @@
           slug.mood = Math.min(1, slug.mood + 0.4);
         }
         if (key === 'violet') slug.mood = Math.max(0.2, slug.mood - 0.2);
+        if (key === 'red') { slug.mood = Math.max(0, slug.mood - 0.5); slug.hp -= 6; }
+        if (key === 'orange') {
+          f.frozen = 0; f.iceBlock = 0;
+          add('steam', 0.4);
+          slug.mood = Math.min(1, slug.mood + 0.2);
+        }
+        if (key === 'pink') { slug.mood = 1; slug.hp = Math.min(100, slug.hp + 10); }
+        if (key === 'green') {
+          slug.color = { ...BASE_COLOR };
+          slug.pills.length = 0;
+          slug.size = 1;
+        }
         break;
       }
 

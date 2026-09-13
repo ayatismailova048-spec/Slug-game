@@ -104,18 +104,20 @@
 
   I.pills = (ctx, x, y, s, t) => base(ctx, x, y, s, (c) => {
     const caps = [
-      [-30, -20, '#6f2fb8', '#a06ce0', -0.6],
-      [12, -26, '#e0a21c', '#f5cd63', 0.5],
-      [-22, 20, '#2540c8', '#6f86ea', 0.3],
-      [22, 16, '#2aa5d6', '#7fd6f0', -0.4]
+      [-34, -30, '#6f2fb8', '#a06ce0', -0.6],
+      [16, -34, '#e0a21c', '#f5cd63', 0.5],
+      [-40, 4, '#2540c8', '#6f86ea', 0.3],
+      [10, 2, '#2aa5d6', '#7fd6f0', -0.4],
+      [-26, 36, '#d2342c', '#ef7a72', 0.45],
+      [26, 34, '#e8489b', '#f58cc2', -0.3]
     ];
     caps.forEach(([px, py, c1, c2, rot], i) => {
       const bob = Math.sin(t * 2 + i) * 2;
       c.save(); c.translate(px, py + bob); c.rotate(rot);
-      c.fillStyle = c1; U.roundRect(c, -20, -11, 40, 22, 11); c.fill();
-      c.fillStyle = c2; U.roundRect(c, -20, -11, 20, 22, 11); c.fill();
+      c.fillStyle = c1; U.roundRect(c, -18, -10, 36, 20, 10); c.fill();
+      c.fillStyle = c2; U.roundRect(c, -18, -10, 18, 20, 10); c.fill();
       c.fillStyle = 'rgba(255,255,255,0.55)';
-      U.roundRect(c, -15, -8, 24, 6, 3); c.fill();
+      U.roundRect(c, -13, -7, 21, 5, 3); c.fill();
       c.restore();
     });
   });
