@@ -10,7 +10,7 @@
     view: { scale: 1, ox: 0, oy: 0 },
     pointer: { x: -999, y: -999, down: false, justDown: false, justUp: false, dragging: false },
     screens: {}, screen: null, screenName: '',
-    time: 0, slug: null,
+    time: 0, slug: null, rot: false,
     toasts: [], shakeAmt: 0, trans: { a: 0, dir: 0, next: null, params: null },
     muted: false, paused: false
   };
@@ -42,9 +42,12 @@
   /* ---------- ввод ---------- */
   function toVirtual(cx, cy) {
     const r = App.canvas.getBoundingClientRect();
-    const x = (cx - r.left - App.view.ox) / App.view.scale;
-    const y = (cy - r.top - App.view.oy) / App.view.scale;
-    return { x, y };
+    let px = cx - r.left, py = cy - r.top;
+    if (App.rot) { const tmp = px; px = py; py = r.width - tmp; }
+    return {
+      x: (px - App.view.ox) / App.view.scale,
+      y: (py - App.view.oy) / App.view.scale
+    };
   }
 
   function bindInput() {
@@ -92,16 +95,25 @@
   };
 
   /* ---------- размер ---------- */
+  const isTouch = () => {
+    try { return global.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+  };
+
   function resize() {
     const c = App.canvas;
     const w = c.clientWidth, h = c.clientHeight;
     App.dpr = Math.min(2, global.devicePixelRatio || 1);
     c.width = Math.round(w * App.dpr);
     c.height = Math.round(h * App.dpr);
-    const s = Math.min(w / App.VW, h / App.VH);
+    // на телефоне в вертикальном положении разворачиваем игру сами,
+    // чтобы не просить пользователя крутить экран
+    App.rot = isTouch() && h > w * 1.02;
+    const availW = App.rot ? h : w;
+    const availH = App.rot ? w : h;
+    const s = Math.min(availW / App.VW, availH / App.VH);
     App.view.scale = s;
-    App.view.ox = (w - App.VW * s) / 2;
-    App.view.oy = (h - App.VH * s) / 2;
+    App.view.ox = (availW - App.VW * s) / 2;
+    App.view.oy = (availH - App.VH * s) / 2;
   }
 
   /* ---------- цикл ---------- */
@@ -148,6 +160,10 @@
 
     ctx.save();
     ctx.scale(App.dpr, App.dpr);
+    if (App.rot) {
+      ctx.translate(App.canvas.clientWidth, 0);
+      ctx.rotate(Math.PI / 2);
+    }
     ctx.translate(App.view.ox, App.view.oy);
     ctx.scale(App.view.scale, App.view.scale);
     // обрезаем по игровому полю

@@ -43,21 +43,3 @@ html, body {
   cursor: pointer; transition: transform .1s ease, box-shadow .1s ease;
 }
 #bootBtn:active { transform: translateY(6px); box-shadow: 0 2px 0 #17624a, 0 6px 14px rgba(0,0,0,.45); }
-
-/* подсказка повернуть телефон */
-#rotate {
-  position: fixed; inset: 0; z-index: 20; display: none;
-  align-items: center; justify-content: center; text-align: center;
-  background: radial-gradient(circle at 50% 45%, #24463c 0%, #0c1814 75%);
-  color: #dff3e7;
-}
-.rot-inner { padding: 30px; }
-.rot-icon { font-size: 84px; animation: turn 2.6s ease-in-out infinite; }
-@keyframes turn {
-  0%, 40% { transform: rotate(0deg); }
-  60%, 100% { transform: rotate(-90deg); }
-}
-#rotate p { font-size: 20px; font-weight: 800; line-height: 1.5; margin-top: 20px; }
-@media (orientation: portrait) and (max-width: 900px) and (pointer: coarse) {
-  #rotate { display: flex; }
-}
