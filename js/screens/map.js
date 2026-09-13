@@ -11,25 +11,25 @@
       sky: ['#f7c98f', '#ffe6c2', '#d8ecdc'],
       tint: 'rgba(255,190,130,0.14)',
       sun: { x: 320, y: 250, r: 54, glow: 'rgba(255,232,180,0.55)', core: 'rgba(255,246,220,0.9)' },
-      stars: 0, fireGlow: 0.8
+      stars: 0, fireGlow: 0.8, light: 0.3
     },
     day: {
       sky: ['#7ec6e8', '#bfe4ef', '#cfe9dd'],
       tint: null,
       sun: { x: 1320, y: 150, r: 52, glow: 'rgba(255,248,205,0.55)', core: 'rgba(255,250,215,0.85)' },
-      stars: 0, fireGlow: 0.6
+      stars: 0, fireGlow: 0.6, light: 0
     },
     evening: {
       sky: ['#4b3f74', '#e08a5c', '#f0c58e'],
       tint: 'rgba(226,120,60,0.2)',
       sun: { x: 1180, y: 470, r: 66, glow: 'rgba(255,160,80,0.55)', core: 'rgba(255,206,140,0.95)' },
-      stars: 0.3, fireGlow: 1.1
+      stars: 0.3, fireGlow: 1.1, light: 0.6
     },
     night: {
       sky: ['#0d1630', '#1b2a4c', '#2b3a55'],
       tint: 'rgba(18,28,66,0.52)',
       moon: { x: 1240, y: 180, r: 58 },
-      stars: 1, fireGlow: 1.6
+      stars: 1, fireGlow: 1.6, light: 1.15
     }
   };
 
@@ -439,8 +439,34 @@
         ctx.restore();
 
         // общий свет времени суток
-        const tint = TM().tint;
-        if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, App.VW, App.VH); }
+        const T = TM();
+        if (T.tint) { ctx.fillStyle = T.tint; ctx.fillRect(0, 0, App.VW, App.VH); }
+
+        // ...а костёр эту темноту разгоняет вокруг себя
+        if (T.light > 0 && fireLevel > 0.05) {
+          const fx = FIRE.x - cam, fy = FIRE.y - 40;
+          if (fx > -700 && fx < App.VW + 700) {
+            const flick = 0.86 + 0.14 * Math.sin(t * 9.3) * Math.sin(t * 3.7);
+            const R = (360 + 240 * fireLevel) * (0.8 + T.light * 0.35);
+            const a = 0.42 * fireLevel * T.light * flick;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const lg = ctx.createRadialGradient(fx, fy, 16, fx, fy, R);
+            lg.addColorStop(0, `rgba(255,196,110,${a})`);
+            lg.addColorStop(0.35, `rgba(255,152,60,${a * 0.55})`);
+            lg.addColorStop(0.7, `rgba(240,110,34,${a * 0.2})`);
+            lg.addColorStop(1, 'rgba(220,90,20,0)');
+            ctx.fillStyle = lg;
+            ctx.fillRect(0, 0, App.VW, App.VH);
+            // тёплое пятно на земле
+            const gg = ctx.createRadialGradient(fx, FIRE.y + 10, 10, fx, FIRE.y + 10, R * 0.8);
+            gg.addColorStop(0, `rgba(255,170,70,${a * 0.42})`);
+            gg.addColorStop(1, 'rgba(255,140,40,0)');
+            ctx.fillStyle = gg;
+            ctx.beginPath(); ctx.ellipse(fx, FIRE.y + 10, R * 0.8, R * 0.3, 0, 0, U.TAU); ctx.fill();
+            ctx.restore();
+          }
+        }
 
         // осадки и листопад — поверх всего мира
         drawSkyParts(ctx);
