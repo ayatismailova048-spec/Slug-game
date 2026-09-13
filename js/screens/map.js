@@ -19,10 +19,10 @@
     const worldX = (sx) => sx + cam;
     const parts = new FX.Particles(300);
     const TRASH = { x: 1512, y: 918, r: 58 };
-    const POOL = { x: 330, y: 862, rx: 200, ry: 64 };
-    const TREE = { x: 700, base: 952 };
-    const FIRE = { x: 1210, y: 884 };
-    const STUMPS = [{ x: 1030, y: 906 }, { x: 1392, y: 906 }];
+    const POOL = { x: 270, y: 858, rx: 210, ry: 68 };
+    const TREE = { x: 1300, base: 952 };
+    const FIRE = { x: 2300, y: 884 };
+    const STUMPS = [{ x: 2116, y: 906 }, { x: 2480, y: 906 }];
 
     /** места, куда можно посадить слизня: ветки дерева и брёвна у костра */
     const SPOTS = [
@@ -271,14 +271,15 @@
         if (cam > 4) arrow(42, 1);
         if (cam < maxCam() - 4) arrow(App.VW - 42, -1);
 
-        // корзина
-        ctx.save();
-        const overTrash = dragIdx >= 0 && U.dist(App.pointer.x, App.pointer.y, TRASH.x, TRASH.y) < TRASH.r + 40;
-        ctx.globalAlpha = dragIdx >= 0 ? 1 : 0.65;
-        ctx.fillStyle = overTrash ? '#e2574c' : 'rgba(30,40,34,0.6)';
-        ctx.beginPath(); ctx.arc(TRASH.x, TRASH.y, TRASH.r + (overTrash ? 8 : 0), 0, U.TAU); ctx.fill();
-        U.text(ctx, '🗑', TRASH.x, TRASH.y, { size: 48 });
-        ctx.restore();
+        // корзина — только пока тащишь слизня, чтобы не мешала любоваться поляной
+        if (dragIdx >= 0) {
+          const overTrash = U.dist(App.pointer.x, App.pointer.y, TRASH.x, TRASH.y) < TRASH.r + 40;
+          ctx.save();
+          ctx.fillStyle = overTrash ? '#e2574c' : 'rgba(30,40,34,0.6)';
+          ctx.beginPath(); ctx.arc(TRASH.x, TRASH.y, TRASH.r + (overTrash ? 8 : 0), 0, U.TAU); ctx.fill();
+          U.text(ctx, '🗑', TRASH.x, TRASH.y, { size: 48 });
+          ctx.restore();
+        }
 
         // панель
         UI.panel(ctx, 200, 16, 900, 72, 18, 'rgba(12,22,18,0.55)');
@@ -493,12 +494,12 @@
           bush(x - 46 * s, y - 118 * s, 50 * s, '#66a64e', '#457a34');
           ctx.restore();
         };
-        tree(150, 676, 0.6);
-        tree(2320, 700, 0.7);
-        bush(980, 662, 38, '#6fb054', '#4c8339');
-        bush(1760, 676, 42, '#6fb054', '#4c8339');
-        bush(2110, 656, 36, '#6fb054', '#4c8339');
-        bush(380, 694, 40, '#6fb054', '#4c8339');
+        tree(620, 672, 0.62);
+        tree(1840, 692, 0.7);
+        bush(880, 664, 38, '#6fb054', '#4c8339');
+        bush(1640, 672, 42, '#6fb054', '#4c8339');
+        bush(2020, 654, 36, '#6fb054', '#4c8339');
+        bush(520, 900, 44, '#6fb054', '#4c8339');
         // цветы
         const frnd = U.mulberry32(77);
         for (let i = 0; i < 40; i++) {
@@ -513,7 +514,7 @@
           ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
         }
         // камни
-        [[300, 720, 40], [252, 740, 26], [1660, 900, 44], [2240, 840, 38], [1980, 726, 30]].forEach(([x, y, r], i) => {
+        [[176, 706, 40], [128, 726, 26], [960, 906, 44], [1720, 880, 38], [1960, 730, 30]].forEach(([x, y, r], i) => {
           const g = ctx.createLinearGradient(x, y - r, x, y + r);
           g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
           ctx.fillStyle = g;
