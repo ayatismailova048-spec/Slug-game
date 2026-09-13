@@ -12,6 +12,11 @@
     let pickerOpen = false;
     let items = [];
     let saveTimer = 0;
+    const WORLD_W = 2600;                 // поляна шире экрана
+    let cam = 0, panning = false, panX = 0, panCam = 0;
+    const maxCam = () => Math.max(0, WORLD_W - App.VW);
+    const clampCam = () => { cam = U.clamp(cam, 0, maxCam()); };
+    const worldX = (sx) => sx + cam;
     const parts = new FX.Particles(300);
     const TRASH = { x: 1512, y: 918, r: 58 };
     const POOL = { x: 330, y: 862, rx: 200, ry: 64 };
@@ -53,9 +58,9 @@
     function spawn(slug) {
       const n = Save.mapItems().length;
       const col = n % 5, row = Math.floor(n / 5) % 3;
-      const x = 300 + col * 250 + U.rand(-40, 40);
+      const x = cam + 300 + col * 250 + U.rand(-40, 40);
       const y = 660 + row * 110 + U.rand(-25, 25);
-      Save.mapAdd(slug, U.clamp(x, 120, App.VW - 120), U.clamp(y, 640, App.VH - 80));
+      Save.mapAdd(slug, U.clamp(x, 120, WORLD_W - 120), U.clamp(y, 640, App.VH - 80));
       refresh(); Sfx.pop(1.1); App.toast('Слизень на карте', '#8ce06a');
     }
 
@@ -139,6 +144,13 @@
           if (saveTimer <= 0) { Save.mapSave(); saveTimer = 2.5; }
         }
 
+        // тащишь слизня к краю — поляна едет следом
+        if (dragIdx >= 0) {
+          const edge = 110;
+          if (App.pointer.x > App.VW - edge && cam < maxCam()) { cam += 420 * dt; clampCam(); items[dragIdx].x += 420 * dt; }
+          if (App.pointer.x < edge && cam > 0) { cam -= 420 * dt; clampCam(); items[dragIdx].x -= 420 * dt; }
+        }
+
         // искры и дымок от костра
         if (Math.random() < dt * 16) {
           parts.add({
@@ -159,133 +171,10 @@
         btns.forEach((b) => b.update(dt, App.pointer, App.pointer.down));
       },
       draw(ctx) {
-        // небо и холмы
-        const sky = ctx.createLinearGradient(0, 0, 0, 560);
-        sky.addColorStop(0, '#7ec6e8'); sky.addColorStop(1, '#cfe9dd');
-        ctx.fillStyle = sky; ctx.fillRect(0, 0, App.VW, App.VH);
-        // солнце
+        drawSky(ctx);
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const sg = ctx.createRadialGradient(1320, 150, 10, 1320, 150, 230);
-        sg.addColorStop(0, 'rgba(255,248,205,0.55)'); sg.addColorStop(1, 'rgba(255,240,180,0)');
-        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(1320, 150, 230, 0, U.TAU); ctx.fill();
-        ctx.fillStyle = 'rgba(255,250,215,0.85)';
-        ctx.beginPath(); ctx.arc(1320, 150, 52, 0, U.TAU); ctx.fill();
-        ctx.restore();
-        // облака
-        for (let i = 0; i < 4; i++) {
-          const cx = ((t * 12 + i * 430) % (App.VW + 400)) - 200;
-          const cy = 110 + i * 42;
-          ctx.save();
-          ctx.fillStyle = 'rgba(255,255,255,0.82)';
-          [[0, 0, 70, 38], [60, 8, 52, 30], [-58, 10, 46, 26]].forEach(([ox, oy, rx, ry]) => {
-            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, rx, ry, 0, 0, U.TAU); ctx.fill();
-          });
-          ctx.restore();
-        }
-        // холмы
-        const hill = (y, col) => {
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          ctx.moveTo(0, y + 120);
-          for (let x = 0; x <= App.VW; x += 20) {
-            ctx.lineTo(x, y + Math.sin(x * 0.004 + y) * 36 + Math.sin(x * 0.011) * 14);
-          }
-          ctx.lineTo(App.VW, App.VH); ctx.lineTo(0, App.VH); ctx.closePath(); ctx.fill();
-        };
-        hill(430, '#7aa858');
-        hill(520, '#5f9247');
-        // трава-поле с мягкой кромкой
-        ctx.fillStyle = '#4e8340';
-        ctx.beginPath();
-        ctx.moveTo(0, 660);
-        for (let x = 0; x <= App.VW; x += 24) {
-          ctx.lineTo(x, 648 + Math.sin(x * 0.006 + 1.4) * 22 + Math.sin(x * 0.02) * 7);
-        }
-        ctx.lineTo(App.VW, App.VH); ctx.lineTo(0, App.VH); ctx.closePath(); ctx.fill();
-        ctx.save();
-        const rnd = U.mulberry32(21);
-        ctx.strokeStyle = 'rgba(30,80,30,0.35)'; ctx.lineCap = 'round';
-        for (let i = 0; i < 300; i++) {
-          const x = rnd() * App.VW, y = 560 + rnd() * (App.VH - 560);
-          const h = 6 + rnd() * 16 * ((y - 540) / 400);
-          const sw = Math.sin(t * 1.4 + x * 0.01) * 4;
-          ctx.lineWidth = 1.5 + rnd() * 1.6;
-          ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + sw, y - h * 0.6, x + sw * 1.6, y - h); ctx.stroke();
-        }
-        ctx.restore();
-        // лужа
-        ctx.save();
-        ctx.fillStyle = 'rgba(70,140,170,0.35)';
-        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y + 6, POOL.rx + 10, POOL.ry + 8, 0, 0, U.TAU); ctx.fill();
-        const pg = ctx.createLinearGradient(0, POOL.y - POOL.ry, 0, POOL.y + POOL.ry);
-        pg.addColorStop(0, 'rgba(120,200,225,0.85)');
-        pg.addColorStop(1, 'rgba(56,130,165,0.9)');
-        ctx.fillStyle = pg;
-        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y, POOL.rx, POOL.ry, 0, 0, U.TAU); ctx.fill();
-        // блики на воде
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        for (let i = 0; i < 4; i++) {
-          const ph = t * 0.5 + i * 1.7;
-          ctx.beginPath();
-          ctx.ellipse(POOL.x - 90 + i * 62 + Math.sin(ph) * 10, POOL.y - 26 + i * 14,
-            34 + Math.sin(ph * 1.3) * 6, 6, -0.15, 0, U.TAU);
-          ctx.fill();
-        }
-        ctx.restore();
-        // кусты и деревья
-        const bush = (x, y, r, col1, col2) => {
-          ctx.save();
-          ctx.fillStyle = col2;
-          [[0, 0, r], [-r * 0.72, r * 0.2, r * 0.72], [r * 0.72, r * 0.16, r * 0.66]].forEach(([ox, oy, rr]) => {
-            ctx.beginPath(); ctx.arc(x + ox, y + oy, rr, 0, U.TAU); ctx.fill();
-          });
-          ctx.fillStyle = col1;
-          [[-r * 0.3, -r * 0.35, r * 0.55], [r * 0.42, -r * 0.2, r * 0.42]].forEach(([ox, oy, rr]) => {
-            ctx.beginPath(); ctx.arc(x + ox, y + oy, rr, 0, U.TAU); ctx.fill();
-          });
-          ctx.restore();
-        };
-        const tree = (x, y, s) => {
-          ctx.save();
-          ctx.fillStyle = 'rgba(0,0,0,0.18)';
-          ctx.beginPath(); ctx.ellipse(x, y + 6, 70 * s, 18 * s, 0, 0, U.TAU); ctx.fill();
-          ctx.fillStyle = '#6b4a26';
-          U.roundRect(ctx, x - 14 * s, y - 120 * s, 28 * s, 124 * s, 8 * s); ctx.fill();
-          bush(x, y - 150 * s, 74 * s, '#6fb054', '#4c8339');
-          bush(x - 46 * s, y - 118 * s, 50 * s, '#66a64e', '#457a34');
-          ctx.restore();
-        };
-        tree(150, 676, 0.6);
-        bush(980, 662, 38, '#6fb054', '#4c8339');
-        bush(380, 694, 40, '#6fb054', '#4c8339');
-        // цветы
-        const frnd = U.mulberry32(77);
-        for (let i = 0; i < 40; i++) {
-          const x = frnd() * App.VW, y = 660 + frnd() * (App.VH - 680);
-          const col = ['#f5e56b', '#f28fb4', '#ffffff', '#c79bf0'][Math.floor(frnd() * 4)];
-          ctx.fillStyle = col;
-          for (let k = 0; k < 5; k++) {
-            const a = (k / 5) * U.TAU;
-            ctx.beginPath(); ctx.arc(x + Math.cos(a) * 5, y + Math.sin(a) * 4, 3.4, 0, U.TAU); ctx.fill();
-          }
-          ctx.fillStyle = '#f0b429';
-          ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
-        }
-        // камни
-        [[300, 720, 40], [252, 740, 26], [1540, 690, 44]].forEach(([x, y, r], i) => {
-          const g = ctx.createLinearGradient(x, y - r, x, y + r);
-          g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.68, i * 0.4, 0, U.TAU); ctx.fill();
-        });
-
-        // большое дерево с ветками
-        drawBigTree(ctx, t);
-
-        // костёр и брёвна
-        drawCamp(ctx, t);
-
+        ctx.translate(-cam, 0);
+        drawWorld(ctx);
         // слизни (сортируем по y для глубины)
         const order = items.map((it, i) => i).sort((a, b) => items[a].y - items[b].y);
         for (const i of order) {
@@ -297,7 +186,7 @@
             x: it.x, y: it.y + bob + sink, scale: it.scale || 0.5, t: t + i * 0.7,
             squash: 1 + Math.sin(t * 1.9 + i) * 0.035,
             look: {
-              x: U.clamp((App.pointer.x - it.x) / 420, -1, 1),
+              x: U.clamp((worldX(App.pointer.x) - it.x) / 420, -1, 1),
               y: U.clamp((App.pointer.y - it.y) / 420, -1, 1)
             },
             alpha: dragIdx === i ? 0.85 : 1
@@ -367,6 +256,21 @@
           }
         }
 
+        ctx.restore();
+
+        // стрелки — поляна продолжается
+        const arrow = (ax, dir) => {
+          ctx.save();
+          ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 3);
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 11; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(ax + dir * 16, 470); ctx.lineTo(ax - dir * 16, 510); ctx.lineTo(ax + dir * 16, 550);
+          ctx.stroke();
+          ctx.restore();
+        };
+        if (cam > 4) arrow(42, 1);
+        if (cam < maxCam() - 4) arrow(App.VW - 42, -1);
+
         // корзина
         ctx.save();
         const overTrash = dragIdx >= 0 && U.dist(App.pointer.x, App.pointer.y, TRASH.x, TRASH.y) < TRASH.r + 40;
@@ -383,7 +287,7 @@
 
         U.text(ctx, 'Слизней на карте: ' + items.length, App.VW / 2, 120,
           { size: 22, color: '#20402f', weight: 800, stroke: 'rgba(255,255,255,0.6)', strokeW: 4 });
-        U.text(ctx, 'Перетаскивай слизней мышкой. В корзину — чтобы убрать.', App.VW / 2, 152,
+        U.text(ctx, 'Перетаскивай слизней. Тяни поляну в сторону — она большая.', App.VW / 2, 152,
           { size: 17, color: '#2c4c3a', weight: 700, stroke: 'rgba(255,255,255,0.5)', strokeW: 3 });
 
         // выбор из сохранений
@@ -421,24 +325,32 @@
         }
 
         // берём слизня (сверху вниз по глубине)
+        const wx = worldX(p.x);
         for (let i = items.length - 1; i >= 0; i--) {
           const it = items[i];
           const r = 150 * (it.scale || 0.5);
-          if (U.dist(p.x, p.y, it.x, it.y) < r) {
-            dragIdx = i; dx = it.x - p.x; dy = it.y - p.y;
+          if (U.dist(wx, p.y, it.x, it.y) < r) {
+            dragIdx = i; dx = it.x - wx; dy = it.y - p.y;
             Sfx.squish(1 + Math.random() * 0.3);
             return;
           }
         }
+
+        // тянем саму поляну
+        if (maxCam() > 0) { panning = true; panX = p.x; panCam = cam; }
       },
       onMove(p) {
         if (dragIdx >= 0) {
           const it = items[dragIdx];
-          it.x = U.clamp(p.x + dx, 60, App.VW - 60);
+          it.x = U.clamp(worldX(p.x) + dx, 60, WORLD_W - 60);
           it.y = U.clamp(p.y + dy, 380, App.VH - 56);
+        } else if (panning) {
+          cam = panCam - (p.x - panX);
+          clampCam();
         }
       },
       onUp(p) {
+        panning = false;
         if (dragIdx >= 0) {
           if (U.dist(p.x, p.y, TRASH.x, TRASH.y) < TRASH.r + 40) {
             parts.emit(20, () => ({
@@ -478,6 +390,143 @@
         }
       }
     };
+
+    /* ---------- небо (не едет вместе с поляной) ---------- */
+    function drawSky(ctx) {
+        const sky = ctx.createLinearGradient(0, 0, 0, 560);
+        sky.addColorStop(0, '#7ec6e8'); sky.addColorStop(1, '#cfe9dd');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, App.VW, App.VH);
+        // солнце
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const sg = ctx.createRadialGradient(1320, 150, 10, 1320, 150, 230);
+        sg.addColorStop(0, 'rgba(255,248,205,0.55)'); sg.addColorStop(1, 'rgba(255,240,180,0)');
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(1320, 150, 230, 0, U.TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,250,215,0.85)';
+        ctx.beginPath(); ctx.arc(1320, 150, 52, 0, U.TAU); ctx.fill();
+        ctx.restore();
+        // облака
+        for (let i = 0; i < 4; i++) {
+          const cx = ((t * 12 + i * 430) % (App.VW + 400)) - 200;
+          const cy = 110 + i * 42;
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,255,255,0.82)';
+          [[0, 0, 70, 38], [60, 8, 52, 30], [-58, 10, 46, 26]].forEach(([ox, oy, rx, ry]) => {
+            ctx.beginPath(); ctx.ellipse(cx + ox, cy + oy, rx, ry, 0, 0, U.TAU); ctx.fill();
+          });
+          ctx.restore();
+        }
+    }
+
+    /* ---------- поляна: она шире экрана ---------- */
+    function drawWorld(ctx) {
+        // холмы
+        const hill = (y, col) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(0, y + 120);
+          for (let x = 0; x <= WORLD_W; x += 20) {
+            ctx.lineTo(x, y + Math.sin(x * 0.004 + y) * 36 + Math.sin(x * 0.011) * 14);
+          }
+          ctx.lineTo(WORLD_W, App.VH); ctx.lineTo(0, App.VH); ctx.closePath(); ctx.fill();
+        };
+        hill(430, '#7aa858');
+        hill(520, '#5f9247');
+        // трава-поле с мягкой кромкой
+        ctx.fillStyle = '#4e8340';
+        ctx.beginPath();
+        ctx.moveTo(0, 660);
+        for (let x = 0; x <= WORLD_W; x += 24) {
+          ctx.lineTo(x, 648 + Math.sin(x * 0.006 + 1.4) * 22 + Math.sin(x * 0.02) * 7);
+        }
+        ctx.lineTo(WORLD_W, App.VH); ctx.lineTo(0, App.VH); ctx.closePath(); ctx.fill();
+        ctx.save();
+        const rnd = U.mulberry32(21);
+        ctx.strokeStyle = 'rgba(30,80,30,0.35)'; ctx.lineCap = 'round';
+        for (let i = 0; i < 300; i++) {
+          const x = rnd() * WORLD_W, y = 560 + rnd() * (App.VH - 560);
+          const h = 6 + rnd() * 16 * ((y - 540) / 400);
+          const sw = Math.sin(t * 1.4 + x * 0.01) * 4;
+          ctx.lineWidth = 1.5 + rnd() * 1.6;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + sw, y - h * 0.6, x + sw * 1.6, y - h); ctx.stroke();
+        }
+        ctx.restore();
+        // лужа
+        ctx.save();
+        ctx.fillStyle = 'rgba(70,140,170,0.35)';
+        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y + 6, POOL.rx + 10, POOL.ry + 8, 0, 0, U.TAU); ctx.fill();
+        const pg = ctx.createLinearGradient(0, POOL.y - POOL.ry, 0, POOL.y + POOL.ry);
+        pg.addColorStop(0, 'rgba(120,200,225,0.85)');
+        pg.addColorStop(1, 'rgba(56,130,165,0.9)');
+        ctx.fillStyle = pg;
+        ctx.beginPath(); ctx.ellipse(POOL.x, POOL.y, POOL.rx, POOL.ry, 0, 0, U.TAU); ctx.fill();
+        // блики на воде
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        for (let i = 0; i < 4; i++) {
+          const ph = t * 0.5 + i * 1.7;
+          ctx.beginPath();
+          ctx.ellipse(POOL.x - 90 + i * 62 + Math.sin(ph) * 10, POOL.y - 26 + i * 14,
+            34 + Math.sin(ph * 1.3) * 6, 6, -0.15, 0, U.TAU);
+          ctx.fill();
+        }
+        ctx.restore();
+        // кусты и деревья
+        const bush = (x, y, r, col1, col2) => {
+          ctx.save();
+          ctx.fillStyle = col2;
+          [[0, 0, r], [-r * 0.72, r * 0.2, r * 0.72], [r * 0.72, r * 0.16, r * 0.66]].forEach(([ox, oy, rr]) => {
+            ctx.beginPath(); ctx.arc(x + ox, y + oy, rr, 0, U.TAU); ctx.fill();
+          });
+          ctx.fillStyle = col1;
+          [[-r * 0.3, -r * 0.35, r * 0.55], [r * 0.42, -r * 0.2, r * 0.42]].forEach(([ox, oy, rr]) => {
+            ctx.beginPath(); ctx.arc(x + ox, y + oy, rr, 0, U.TAU); ctx.fill();
+          });
+          ctx.restore();
+        };
+        const tree = (x, y, s) => {
+          ctx.save();
+          ctx.fillStyle = 'rgba(0,0,0,0.18)';
+          ctx.beginPath(); ctx.ellipse(x, y + 6, 70 * s, 18 * s, 0, 0, U.TAU); ctx.fill();
+          ctx.fillStyle = '#6b4a26';
+          U.roundRect(ctx, x - 14 * s, y - 120 * s, 28 * s, 124 * s, 8 * s); ctx.fill();
+          bush(x, y - 150 * s, 74 * s, '#6fb054', '#4c8339');
+          bush(x - 46 * s, y - 118 * s, 50 * s, '#66a64e', '#457a34');
+          ctx.restore();
+        };
+        tree(150, 676, 0.6);
+        tree(2320, 700, 0.7);
+        bush(980, 662, 38, '#6fb054', '#4c8339');
+        bush(1760, 676, 42, '#6fb054', '#4c8339');
+        bush(2110, 656, 36, '#6fb054', '#4c8339');
+        bush(380, 694, 40, '#6fb054', '#4c8339');
+        // цветы
+        const frnd = U.mulberry32(77);
+        for (let i = 0; i < 40; i++) {
+          const x = frnd() * WORLD_W, y = 660 + frnd() * (App.VH - 680);
+          const col = ['#f5e56b', '#f28fb4', '#ffffff', '#c79bf0'][Math.floor(frnd() * 4)];
+          ctx.fillStyle = col;
+          for (let k = 0; k < 5; k++) {
+            const a = (k / 5) * U.TAU;
+            ctx.beginPath(); ctx.arc(x + Math.cos(a) * 5, y + Math.sin(a) * 4, 3.4, 0, U.TAU); ctx.fill();
+          }
+          ctx.fillStyle = '#f0b429';
+          ctx.beginPath(); ctx.arc(x, y, 2.6, 0, U.TAU); ctx.fill();
+        }
+        // камни
+        [[300, 720, 40], [252, 740, 26], [1660, 900, 44], [2240, 840, 38], [1980, 726, 30]].forEach(([x, y, r], i) => {
+          const g = ctx.createLinearGradient(x, y - r, x, y + r);
+          g.addColorStop(0, '#b0b6ae'); g.addColorStop(1, '#6e756c');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.68, i * 0.4, 0, U.TAU); ctx.fill();
+        });
+
+        // большое дерево с ветками
+        drawBigTree(ctx, t);
+
+        // костёр и брёвна
+        drawCamp(ctx, t);
+
+    }
 
     /* ---------- большое дерево ---------- */
     function drawBigTree(ctx, t) {
