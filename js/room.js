@@ -34,6 +34,38 @@
     }
   }
 
+  /** Чистый фон без комнаты: мягкий свет и лёгкая тень под прибором */
+  function drawPlain(ctx, t, opt = {}) {
+    const { glow = null, ground = 830 } = opt;
+    const W = App.VW, H = App.VH;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#fcfdfb');
+    g.addColorStop(0.6, '#f0f3ee');
+    g.addColorStop(1, '#dfe4dc');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    if (glow) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const rg = ctx.createRadialGradient(W / 2, ground - 260, 40, W / 2, ground - 200, 900);
+      rg.addColorStop(0, glow);
+      rg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // мягкая «земля»
+    ctx.save();
+    const sg = ctx.createLinearGradient(0, ground - 40, 0, H);
+    sg.addColorStop(0, 'rgba(160,170,155,0)');
+    sg.addColorStop(1, 'rgba(150,162,146,0.35)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, ground - 40, W, H - ground + 40);
+    ctx.restore();
+  }
+
   /* ---------- фон лаборатории ---------- */
   function drawLab(ctx, t, opt = {}) {
     const { wall1 = '#3f5c54', wall2 = '#2a403a', floor1 = '#8d9a91', floor2 = '#5d6a63', horizon = 620 } = opt;
@@ -166,8 +198,8 @@
 
   function makeBackBtn() {
     return new UI.Btn({
-      x: 26, y: 24, w: 150, h: 54, label: '‹ Назад', font: 22,
-      color: '#63776e', dark: '#3d4c46', radius: 14
+      x: 26, y: 24, w: 68, h: 68, label: '‹', font: 40,
+      color: '#8e9b93', dark: '#5f6d66', radius: 34
     });
   }
 
@@ -215,5 +247,5 @@
     }));
   }
 
-  global.Room = { Tw, drawLab, drawCounter, header, makeBackBtn, status, stepBadge, painBurst };
+  global.Room = { Tw, drawPlain, drawLab, drawCounter, header, makeBackBtn, status, stepBadge, painBurst };
 })(window);

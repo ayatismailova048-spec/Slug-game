@@ -55,7 +55,7 @@
     c.beginPath(); c.moveTo(30, 36); c.lineTo(-18, 6); c.stroke();
     c.strokeStyle = '#4c2f14'; c.lineWidth = 4;
     c.beginPath(); c.moveTo(-26, 32); c.lineTo(14, 8); c.stroke();
-    FX.drawFire(c, 0, 18, 30, 62, t, 1, 9);
+    FX.drawFire(c, 0, 18, 30, 62, t, 1, 9, true);
   });
 
   I.acid = (ctx, x, y, s, t) => base(ctx, x, y, s, (c) => {
@@ -137,7 +137,7 @@
     c.strokeStyle = '#20232a'; c.lineWidth = 10; c.lineCap = 'round';
     c.beginPath(); c.moveTo(40, 6); c.lineTo(72, -10); c.stroke();
     // огонь конфорки
-    FX.drawFire(c, -6, 34, 26, 24, t, 0.7, 17);
+    FX.drawFire(c, -6, 34, 26, 24, t, 0.7, 17, true);
   });
 
   I.ice = (ctx, x, y, s, t) => base(ctx, x, y, s, (c) => {

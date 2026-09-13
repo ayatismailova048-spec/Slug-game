@@ -1,5 +1,6 @@
 /* ============================================================
    stations/base.js — экран-обёртка для приборов + общие помощники
+   Никаких надписей: только прибор, слизень и стрелка «назад».
    ============================================================ */
 (function (global) {
   'use strict';
@@ -20,8 +21,45 @@
       }
       return false;
     }
-    move(p) { if (this.on) { this.tw.set(p.x + this.dx, p.y + this.dy); } }
+    move(p) { if (this.on) this.tw.set(p.x + this.dx, p.y + this.dy); }
     drop() { const was = this.on; this.on = false; return was; }
+  };
+
+  /**
+   * Держатель слизня: его можно взять где угодно, бросить в прибор
+   * и вытащить обратно. Вне прибора слизень просто остаётся там,
+   * куда его положили.
+   */
+  global.Holder = class {
+    constructor(home, ground) {
+      this.home = home;
+      this.ground = ground === undefined ? home.y : ground;
+      this.tw = new Room.Tw(home.x, home.y, home.s);
+      this.drag = new global.DragSlug(this.tw, 150);
+      this.inside = false;
+    }
+    reset() { this.tw.set(this.home.x, this.home.y, this.home.s); this.inside = false; }
+    grab(p) {
+      if (this.drag.tryGrab(p)) { this.inside = false; return true; }
+      return false;
+    }
+    move(p) { this.drag.move(p); }
+    /** zoneHit(x, y) — попал ли слизень в прибор */
+    release(zoneHit, onIn, onOut) {
+      if (!this.drag.drop()) return;
+      if (zoneHit(this.tw.x, this.tw.y)) {
+        this.inside = true;
+        if (onIn) onIn();
+      } else {
+        this.inside = false;
+        const x = U.clamp(this.tw.x, 150, App.VW - 150);
+        this.tw.to(x, this.ground, this.home.s, 0.35);
+        if (onOut) onOut();
+      }
+    }
+    /** пока слизень внутри прибора — прибор сам держит его */
+    hold(x, y, s) { if (this.inside && !this.drag.on) this.tw.set(x, y, s); }
+    get held() { return this.drag.on; }
   };
 
   App.register('station', function () {
@@ -42,9 +80,7 @@
       },
       draw(ctx) {
         if (impl && impl.draw) impl.draw(ctx);
-        Room.header(ctx, meta.name, meta.num, meta.color);
         back.draw(ctx, App.time);
-        if (!impl || impl.showStatus !== false) Room.status(ctx, App.slug, 26, 794, 450);
       },
       onDown(p) {
         if (back.hit(p)) { Sfx.click(); App.go('hub'); return; }

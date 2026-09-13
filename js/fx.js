@@ -155,18 +155,25 @@
    * Рисует живой костёр: языки пламени + свечение.
    * intensity 0..1, w — ширина очага, h — высота пламени
    */
-  function drawFire(ctx, x, y, w, h, t, intensity = 1, seed = 3) {
+  function drawFire(ctx, x, y, w, h, t, intensity = 1, seed = 3, solid = false) {
     if (intensity <= 0.01) return;
     const rnd = U.mulberry32(seed);
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    if (!solid) ctx.globalCompositeOperation = 'lighter';
 
     // общее свечение
+    const flick = 0.85 + 0.15 * Math.sin(t * 7.3);
     const glow = ctx.createRadialGradient(x, y - h * 0.25, 4, x, y - h * 0.25, w * 1.9);
-    const gp = 0.30 * intensity * (0.85 + 0.15 * Math.sin(t * 7.3));
-    glow.addColorStop(0, `rgba(255,170,60,${gp})`);
-    glow.addColorStop(0.5, `rgba(255,110,20,${gp * 0.35})`);
-    glow.addColorStop(1, 'rgba(255,80,0,0)');
+    if (solid) {
+      glow.addColorStop(0, `rgba(255,186,88,${0.22 * intensity * flick})`);
+      glow.addColorStop(0.55, `rgba(255,150,50,${0.1 * intensity})`);
+      glow.addColorStop(1, 'rgba(255,140,40,0)');
+    } else {
+      const gp = 0.30 * intensity * flick;
+      glow.addColorStop(0, `rgba(255,170,60,${gp})`);
+      glow.addColorStop(0.5, `rgba(255,110,20,${gp * 0.35})`);
+      glow.addColorStop(1, 'rgba(255,80,0,0)');
+    }
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.ellipse(x, y - h * 0.25, w * 1.9, h * 1.1, 0, 0, U.TAU); ctx.fill();
 
@@ -175,13 +182,12 @@
       const ph = rnd() * 10;
       const sp = 0.9 + rnd() * 1.5;
       const ox = (rnd() * 2 - 1) * w * 0.52;
-      const flick = Math.sin(t * sp * 3 + ph);
-      const flick2 = Math.sin(t * sp * 5.7 + ph * 2);
-      const hh = h * (0.45 + rnd() * 0.75) * intensity * (0.82 + 0.18 * flick);
-      const ww = w * (0.16 + rnd() * 0.26) * (0.85 + 0.15 * flick2);
-      const lean = flick * w * 0.14 + flick2 * w * 0.05;
+      const fl = Math.sin(t * sp * 3 + ph);
+      const fl2 = Math.sin(t * sp * 5.7 + ph * 2);
+      const hh = h * (0.45 + rnd() * 0.75) * intensity * (0.82 + 0.18 * fl);
+      const ww = w * (0.16 + rnd() * 0.26) * (0.85 + 0.15 * fl2);
+      const lean = fl * w * 0.14 + fl2 * w * 0.05;
 
-      // форма языка
       ctx.beginPath();
       ctx.moveTo(x + ox - ww, y);
       ctx.bezierCurveTo(
@@ -196,14 +202,20 @@
       );
       ctx.closePath();
       const fg = ctx.createLinearGradient(x + ox, y, x + ox, y - hh);
-      fg.addColorStop(0, `rgba(255,226,150,${0.34 * intensity})`);
-      fg.addColorStop(0.25, `rgba(255,168,48,${0.34 * intensity})`);
-      fg.addColorStop(0.65, `rgba(226,90,22,${0.26 * intensity})`);
-      fg.addColorStop(1, 'rgba(180,40,10,0)');
+      if (solid) {
+        fg.addColorStop(0, `rgba(255,232,150,${0.95 * intensity})`);
+        fg.addColorStop(0.24, `rgba(255,186,52,${0.88 * intensity})`);
+        fg.addColorStop(0.62, `rgba(236,110,26,${0.62 * intensity})`);
+        fg.addColorStop(1, 'rgba(214,66,14,0)');
+      } else {
+        fg.addColorStop(0, `rgba(255,226,150,${0.34 * intensity})`);
+        fg.addColorStop(0.25, `rgba(255,168,48,${0.34 * intensity})`);
+        fg.addColorStop(0.65, `rgba(226,90,22,${0.26 * intensity})`);
+        fg.addColorStop(1, 'rgba(180,40,10,0)');
+      }
       ctx.fillStyle = fg;
       ctx.fill();
 
-      // раскалённое ядро
       if (i % 2 === 0) {
         ctx.beginPath();
         ctx.moveTo(x + ox - ww * 0.42, y);
@@ -211,7 +223,7 @@
         ctx.quadraticCurveTo(x + ox + ww * 0.3 + lean * 0.5, y - hh * 0.5, x + ox + ww * 0.42, y);
         ctx.closePath();
         const cg = ctx.createLinearGradient(x + ox, y, x + ox, y - hh * 0.62);
-        cg.addColorStop(0, `rgba(255,250,215,${0.30 * intensity})`);
+        cg.addColorStop(0, solid ? `rgba(255,250,225,${0.85 * intensity})` : `rgba(255,250,215,${0.30 * intensity})`);
         cg.addColorStop(1, 'rgba(255,220,120,0)');
         ctx.fillStyle = cg;
         ctx.fill();
