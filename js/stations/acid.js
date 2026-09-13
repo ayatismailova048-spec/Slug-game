@@ -1,77 +1,91 @@
 /* ============================================================
    stations/acid.js — прибор №3
-   Шаги: налить кислоту → подвесить слизня на крюк → опустить рычагом
+   Шаги: налить кислоту в банку → бросить туда слизня
    ============================================================ */
 (function (global) {
   'use strict';
 
-  const TANK = { x: 760, top: 430, bot: 830, w: 380 };
-  const HOME = { x: 300, y: 720, s: 0.5 };
-  const HOOK = { x: TANK.x, y: 360 };
+  const JAR = { x: 750, top: 330, bot: 830, w: 420 };
+  const HOME = { x: 270, y: 730, s: 0.52 };
+  const BOTTLE = { x: 1090, y: 640 };
 
   StationImpl.acid = function () {
     let t = 0;
-    let level = 0;          // 0..1 кислоты в чане
-    let pours = 0;
-    let hooked = false;
-    let leverV = 0;         // 0 — поднят, 1 — опущен
-    let leverDrag = false;
-    let dissolving = 0;
+    let level = 0;            // сколько кислоты налито 0..1
+    let inside = false;
+    let pouring = 0;          // анимация струи из бутыли
+    let bottleTilt = 0;
+    let sink = 0;             // погружение слизня 0..1
     let screamT = 0, hissT = 0;
     const parts = new FX.Particles(500);
     const tw = new Room.Tw(HOME.x, HOME.y, HOME.s);
     const drag = new global.DragSlug(tw, 150);
     let btns = {};
 
-    const LEV = { x: 1440, top: 400, bot: 690 };
-
     function build() {
       btns = {
         pour: new UI.Btn({
-          x: 1020, y: 180, w: 300, h: 70, label: 'Налить кислоту', icon: '🧪', font: 21,
+          x: 1060, y: 180, w: 340, h: 72, label: 'Налить кислоту', icon: '🧪', font: 21,
           color: '#7fc22c', dark: '#4c7d10', pulse: true, onClick: pour
         }),
-        unhook: new UI.Btn({
-          x: 1020, y: 266, w: 300, h: 62, label: 'Снять с крюка', font: 20,
-          color: '#4d8ec9', dark: '#2c5f8f', visible: false, onClick: unhook
+        out: new UI.Btn({
+          x: 1060, y: 272, w: 340, h: 64, label: 'Достать слизня', font: 20,
+          color: '#4d8ec9', dark: '#2c5f8f', visible: false, onClick: takeOut
         })
       };
     }
 
+    function surfaceY() { return JAR.bot - 30 - (JAR.bot - JAR.top - 80) * level; }
+
     function pour() {
-      if (level >= 0.99) { App.toast('Чан полон'); return; }
-      pours++;
+      if (level >= 0.99) { App.toast('Банка полна'); return; }
       level = U.clamp(level + 0.34, 0, 1);
+      pouring = 0.9;
       Sfx.splash(); Sfx.acidHiss();
-      parts.emit(16, () => ({
-        kind: 'bubble', x: TANK.x + U.rand(-140, 140), y: TANK.bot - 300 * level,
+      parts.emit(14, () => ({
+        kind: 'bubble', x: JAR.x + U.rand(-150, 150), y: surfaceY(),
         vy: U.rand(-70, -20), life: U.rand(0.6, 1.4), size: U.rand(4, 12),
         col: 'rgba(220,255,150,0.9)', alpha: 0.9
       }));
       if (level >= 0.99) { btns.pour.pulse = false; App.toast('Кислоты достаточно', '#b6f04a'); }
     }
 
-    function hookUp() {
-      hooked = true; drag.enabled = false;
-      tw.to(HOOK.x, HOOK.y + 80, 0.5, 0.5);
-      btns.unhook.visible = true;
-      Sfx.click(0.7);
+    function dropIn() {
+      if (level < 0.5) { App.toast('Сначала налей кислоту'); return false; }
+      inside = true; drag.enabled = false;
+      btns.out.visible = true;
+      // падение в банку
+      tw.set(JAR.x, Math.min(tw.y, surfaceY() - 140), 0.5);
+      tw.to(JAR.x, surfaceY() + 90, 0.56, 0.45, U.easeInCubic, () => {
+        Sfx.splash();
+        App.shake(8);
+        parts.emit(26, () => ({
+          kind: 'bubble', x: JAR.x + U.rand(-120, 120), y: surfaceY() + U.rand(-10, 30),
+          vy: U.rand(-190, -60), life: U.rand(0.5, 1.3), size: U.rand(4, 14),
+          col: 'rgba(230,255,170,0.95)', alpha: 1
+        }));
+        parts.emit(14, () => ({
+          kind: 'drop', x: JAR.x + U.rand(-90, 90), y: surfaceY(),
+          vx: U.rand(-170, 170), vy: U.rand(-330, -120), grav: 900,
+          life: U.rand(0.4, 0.8), size: U.rand(3, 8), col: 'rgba(190,245,90,0.9)'
+        }));
+      });
+      return true;
     }
-    function unhook() {
-      hooked = false; drag.enabled = true; leverV = 0;
-      btns.unhook.visible = false;
+
+    function takeOut() {
+      inside = false; drag.enabled = true;
+      btns.out.visible = false;
       Sfx.loop('bubbles', false);
-      tw.to(HOME.x, HOME.y, HOME.s, 0.7, U.easeOutBack);
+      Sfx.splash();
+      tw.to(HOME.x, HOME.y, HOME.s, 0.75, U.easeOutBack);
       App.toast('Теперь это ' + SlugModel.title(App.slug).toLowerCase(), '#b6f04a');
     }
 
-    function surfaceY() { return TANK.bot - (TANK.bot - TANK.top - 20) * level; }
-
     function hint() {
-      if (level < 0.99) return 'Налей кислоту в чан — нажимай «Налить кислоту»';
-      if (!hooked) return 'Перетащи слизня на крюк крана';
-      if (leverV < 0.1) return 'Тяни красный рычаг вниз, чтобы опустить слизня в кислоту';
-      return 'Шипит! Подними рычаг, чтобы вытащить слизня';
+      if (level < 0.99) return 'Налей кислоту в банку';
+      if (!inside) return 'Хватай слизня и бросай его прямо в банку';
+      return 'Шипит! Достань слизня, пока не растворился весь';
     }
 
     return {
@@ -80,25 +94,21 @@
 
       update(dt) {
         t += dt; tw.update(dt); parts.update(dt);
+        pouring = Math.max(0, pouring - dt);
+        bottleTilt = U.lerp(bottleTilt, pouring > 0 ? 1 : 0, dt * 8);
 
-        if (hooked) {
-          const topY = HOOK.y + 80;
-          const deepY = surfaceY() + 90;
-          tw.set(HOOK.x, U.lerp(topY, deepY, leverV), 0.5);
-        }
-
-        const submerged = hooked && level > 0.5 && tw.y + 60 > surfaceY();
-        if (submerged) {
-          dissolving = U.lerp(dissolving, 1, dt * 3);
-          SlugModel.apply(App.slug, 'acid', dt * 0.13);
+        if (inside) {
+          sink = U.lerp(sink, 1, dt * 3);
+          if (tw.done) tw.set(JAR.x + Math.sin(t * 0.9) * 10, surfaceY() + 90 + Math.sin(t * 1.3) * 12, 0.56);
+          SlugModel.apply(App.slug, 'acid', dt * 0.12);
           Sfx.loop('bubbles', true, 1);
           screamT -= dt;
-          if (screamT <= 0) { Sfx.scream(0.8, 0.5); screamT = 0.6 + Math.random() * 0.4; }
+          if (screamT <= 0 && App.slug.alive) { Sfx.scream(0.8, 0.5); screamT = 0.6 + Math.random() * 0.4; }
           hissT -= dt;
           if (hissT <= 0) { Sfx.acidHiss(); hissT = 1.2 + Math.random(); }
           App.shake(dt * 4);
-          parts.emit(3, () => ({
-            kind: 'bubble', x: tw.x + U.rand(-70, 70), y: tw.y + U.rand(-20, 50),
+          parts.emit(1, () => ({
+            kind: 'bubble', x: tw.x + U.rand(-110, 110), y: tw.y + U.rand(30, 70),
             vy: U.rand(-120, -50), life: U.rand(0.5, 1.2), size: U.rand(3, 11),
             col: 'rgba(230,255,170,0.95)', alpha: 1
           }));
@@ -110,15 +120,14 @@
             });
           }
         } else {
-          dissolving = U.lerp(dissolving, 0, dt * 4);
+          sink = U.lerp(sink, 0, dt * 4);
           Sfx.loop('bubbles', false);
         }
 
-        // пузыри в чане
         if (level > 0.05 && Math.random() < dt * 12) {
           parts.add({
-            kind: 'bubble', x: TANK.x + U.rand(-TANK.w / 2 + 20, TANK.w / 2 - 20),
-            y: TANK.bot - 10, vy: U.rand(-60, -25), life: U.rand(1.2, 2.6),
+            kind: 'bubble', x: JAR.x + U.rand(-JAR.w / 2 + 30, JAR.w / 2 - 30),
+            y: JAR.bot - 20, vy: U.rand(-60, -25), life: U.rand(1.2, 2.6),
             size: U.rand(3, 9), col: 'rgba(210,255,150,0.8)', alpha: 0.8
           });
         }
@@ -127,60 +136,42 @@
       },
 
       draw(ctx) {
-        Room.drawLab(ctx, t, { wall1: '#41584a', wall2: '#233229', floor1: '#8f9a8d', floor2: '#5f6a5e', horizon: 600 });
+        Room.drawLab(ctx, t, { wall1: '#41584a', wall2: '#233229', floor1: '#8f9a8d', floor2: '#5f6a5e', horizon: 620 });
+        Room.drawCounter(ctx, 480, 836, 740, 44, '#b9c4b6');
 
-        // зелёное свечение от чана
+        // зелёное свечение от банки
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const gl = ctx.createRadialGradient(TANK.x, surfaceY(), 20, TANK.x, surfaceY(), 520);
+        const gl = ctx.createRadialGradient(JAR.x, surfaceY(), 20, JAR.x, surfaceY(), 520);
         gl.addColorStop(0, `rgba(150,255,60,${0.10 + level * 0.16})`);
         gl.addColorStop(1, 'rgba(150,255,60,0)');
         ctx.fillStyle = gl; ctx.fillRect(0, 0, App.VW, App.VH);
         ctx.restore();
 
-        // кран-балка
+        const jarPath = (c, inset = 0) => {
+          U.roundRect(c, JAR.x - JAR.w / 2 + inset, JAR.top + inset,
+            JAR.w - inset * 2, JAR.bot - JAR.top - inset * 2, 54 - inset);
+        };
+
+        // задняя стенка банки
         ctx.save();
-        ctx.fillStyle = '#5a6b62';
-        U.roundRect(ctx, 300, 190, 960, 34, 10); ctx.fill();
-        ctx.fillStyle = '#3f4d46';
-        U.roundRect(ctx, 320, 224, 30, 380, 8); ctx.fill();
-        U.roundRect(ctx, 1210, 224, 30, 380, 8); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        U.roundRect(ctx, 310, 194, 940, 10, 5); ctx.fill();
-        // каретка
-        ctx.fillStyle = '#76867d';
-        U.roundRect(ctx, TANK.x - 50, 214, 100, 46, 10); ctx.fill();
-        // трос
-        ctx.strokeStyle = '#cdd6d0'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(TANK.x, 258); ctx.lineTo(TANK.x, hooked ? tw.y - 60 : HOOK.y); ctx.stroke();
-        // крюк
-        const hy = hooked ? tw.y - 60 : HOOK.y;
-        ctx.strokeStyle = '#b9c4bd'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.arc(TANK.x, hy + 16, 18, Math.PI * 0.15, Math.PI * 1.2); ctx.stroke();
+        ctx.fillStyle = 'rgba(215,235,220,0.16)';
+        jarPath(ctx); ctx.fill();
         ctx.restore();
 
-        // ---- чан ----
-        // задняя стенка
+        // содержимое
         ctx.save();
-        ctx.fillStyle = 'rgba(210,230,215,0.14)';
-        U.roundRect(ctx, TANK.x - TANK.w / 2, TANK.top, TANK.w, TANK.bot - TANK.top, 18); ctx.fill();
-        ctx.restore();
-
-        // жидкость + слизень внутри (обрезаем по чану)
-        ctx.save();
-        U.roundRect(ctx, TANK.x - TANK.w / 2 + 6, TANK.top + 6, TANK.w - 12, TANK.bot - TANK.top - 12, 14);
-        ctx.clip();
+        jarPath(ctx, 8); ctx.clip();
         if (level > 0.01) {
-          const sy0 = surfaceY();
-          FX.drawLiquidSurface(ctx, TANK.x, sy0, TANK.w, t, 'rgba(150,225,50,0.9)', 'rgba(52,116,16,0.95)', 7, 0.025);
+          FX.drawLiquidSurface(ctx, JAR.x, surfaceY(), JAR.w, t,
+            'rgba(186,244,72,0.92)', 'rgba(74,146,18,0.95)', 7, 0.025);
         }
-        if (hooked) drawSlugHere(ctx);
+        if (inside || sink > 0.02) drawSlugHere(ctx);
         if (level > 0.01) {
-          const sy = surfaceY();
-          // зелёная дымка поверх погружённой части
           ctx.save();
-          ctx.globalAlpha = 0.3;
-          FX.drawLiquidSurface(ctx, TANK.x, sy, TANK.w, t, 'rgba(170,240,60,0.85)', 'rgba(60,140,20,0.7)', 7, 0.025);
+          ctx.globalAlpha = 0.16;
+          FX.drawLiquidSurface(ctx, JAR.x, surfaceY(), JAR.w, t,
+            'rgba(170,240,60,0.85)', 'rgba(60,140,20,0.7)', 7, 0.025);
           ctx.restore();
           // светящаяся кромка
           ctx.save();
@@ -188,9 +179,9 @@
           ctx.strokeStyle = `rgba(210,255,120,${0.5 + 0.2 * Math.sin(t * 3)})`;
           ctx.lineWidth = 5;
           ctx.beginPath();
-          for (let px = -TANK.w / 2; px <= TANK.w / 2; px += 6) {
-            const yy = sy + Math.sin(px * 0.025 + t * 2.2) * 7 + Math.sin(px * 0.07 - t * 3.1) * 3;
-            if (px === -TANK.w / 2) ctx.moveTo(TANK.x + px, yy); else ctx.lineTo(TANK.x + px, yy);
+          for (let px = -JAR.w / 2; px <= JAR.w / 2; px += 6) {
+            const yy = surfaceY() + Math.sin(px * 0.025 + t * 2.2) * 7 + Math.sin(px * 0.07 - t * 3.1) * 3;
+            if (px === -JAR.w / 2) ctx.moveTo(JAR.x + px, yy); else ctx.lineTo(JAR.x + px, yy);
           }
           ctx.stroke();
           ctx.restore();
@@ -198,89 +189,110 @@
         parts.draw(ctx);
         ctx.restore();
 
-        // стекло чана
+        // стекло банки
         ctx.save();
-        const gg = ctx.createLinearGradient(TANK.x - TANK.w / 2, 0, TANK.x + TANK.w / 2, 0);
-        gg.addColorStop(0, 'rgba(255,255,255,0.26)');
-        gg.addColorStop(0.3, 'rgba(255,255,255,0.05)');
+        const gg = ctx.createLinearGradient(JAR.x - JAR.w / 2, 0, JAR.x + JAR.w / 2, 0);
+        gg.addColorStop(0, 'rgba(255,255,255,0.28)');
+        gg.addColorStop(0.28, 'rgba(255,255,255,0.05)');
         gg.addColorStop(1, 'rgba(255,255,255,0.22)');
-        ctx.fillStyle = gg;
-        U.roundRect(ctx, TANK.x - TANK.w / 2, TANK.top, TANK.w, TANK.bot - TANK.top, 18); ctx.fill();
-        ctx.strokeStyle = 'rgba(240,255,240,0.8)'; ctx.lineWidth = 6;
-        U.roundRect(ctx, TANK.x - TANK.w / 2, TANK.top, TANK.w, TANK.bot - TANK.top, 18); ctx.stroke();
-        // предупреждающая табличка
+        ctx.fillStyle = gg; jarPath(ctx); ctx.fill();
+        ctx.strokeStyle = 'rgba(240,255,240,0.85)'; ctx.lineWidth = 7;
+        jarPath(ctx); ctx.stroke();
+        // блик по стеклу
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        U.roundRect(ctx, JAR.x - JAR.w / 2 + 34, JAR.top + 50, 26, JAR.bot - JAR.top - 140, 13); ctx.fill();
+        // горловина банки
+        ctx.fillStyle = 'rgba(232,245,235,0.6)';
+        U.roundRect(ctx, JAR.x - JAR.w / 2 - 16, JAR.top - 26, JAR.w + 32, 44, 22); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 5;
+        U.roundRect(ctx, JAR.x - JAR.w / 2 - 16, JAR.top - 26, JAR.w + 32, 44, 22); ctx.stroke();
+        // наклейка
+        ctx.save();
+        ctx.translate(JAR.x - JAR.w / 2 + 78, JAR.bot - 92); ctx.rotate(-0.05);
         ctx.fillStyle = '#f0c04a';
+        U.roundRect(ctx, -50, -44, 100, 88, 12); ctx.fill();
+        U.text(ctx, '☠', 0, -10, { size: 40, color: '#2a2a1a' });
+        U.text(ctx, 'КИСЛОТА', 0, 26, { size: 14, color: '#2a2a1a', weight: 900 });
+        ctx.restore();
+        ctx.restore();
+
+        // бутыль с кислотой
         ctx.save();
-        ctx.translate(TANK.x - TANK.w / 2 + 60, TANK.bot - 50); ctx.rotate(-0.05);
-        U.roundRect(ctx, -42, -30, 84, 60, 10); ctx.fill();
-        U.text(ctx, '☠', 0, -2, { size: 34, color: '#2a2a1a' });
+        ctx.translate(BOTTLE.x, BOTTLE.y);
+        ctx.rotate(-bottleTilt * 1.9);
+        ctx.fillStyle = '#1f6b25';
+        U.roundRect(ctx, -44, -90, 88, 150, 18); ctx.fill();
+        ctx.fillStyle = '#2e8b34';
+        U.roundRect(ctx, -36, -82, 72, 134, 14); ctx.fill();
+        ctx.fillStyle = '#1f6b25';
+        U.roundRect(ctx, -16, -124, 32, 40, 10); ctx.fill();
+        ctx.fillStyle = '#d7ff8a';
+        ctx.beginPath(); ctx.ellipse(0, -18, 22, 30, 0, 0, U.TAU); ctx.fill();
+        U.text(ctx, '☠', 0, -18, { size: 30, color: '#2b4a12' });
         ctx.restore();
-        ctx.restore();
+        // струя из бутыли
+        if (pouring > 0.05) {
+          ctx.save();
+          ctx.globalAlpha = U.clamp(pouring * 1.4, 0, 1);
+          ctx.strokeStyle = '#b6f04a'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(BOTTLE.x - 96, BOTTLE.y - 96);
+          ctx.quadraticCurveTo(JAR.x + 180, JAR.top - 60, JAR.x + 60, surfaceY());
+          ctx.stroke();
+          ctx.restore();
+        }
 
-        // подставка чана
-        ctx.fillStyle = '#4b5a51';
-        U.roundRect(ctx, TANK.x - TANK.w / 2 - 20, TANK.bot - 6, TANK.w + 40, 40, 10); ctx.fill();
+        if (!inside && sink < 0.02) drawSlugHere(ctx);
 
-        // слизень снаружи
-        if (!hooked) drawSlugHere(ctx);
-
-        // рычаг
-        ctx.save();
-        ctx.fillStyle = 'rgba(20,30,24,0.6)';
-        U.roundRect(ctx, LEV.x - 78, LEV.top - 58, 156, LEV.bot - LEV.top + 112, 18); ctx.fill();
-        U.text(ctx, 'КРАН', LEV.x, LEV.top - 30, { size: 18, color: '#cfe9dd', weight: 800 });
-        UI.lever(ctx, LEV.x, LEV.top, LEV.bot, leverV, leverV > 0.5 ? 'ВНИЗ' : 'ВВЕРХ');
-        ctx.restore();
-
-        UI.progress(ctx, 1020, 350, 300, 26, App.slug.fx.melt, '#8bc93a',
+        UI.progress(ctx, 1060, 356, 340, 26, App.slug.fx.melt, '#8bc93a',
           'РАСТВОРЕНИЕ ' + Math.round(App.slug.fx.melt * 100) + '%');
+        UI.progress(ctx, 1060, 396, 340, 18, level, '#c8f06a', '');
+        U.text(ctx, 'кислоты в банке', 1230, 405, { size: 13, color: '#0d2408', weight: 800 });
 
         Object.values(btns).forEach((b) => b.draw(ctx, t));
         UI.hintBar(ctx, hint(), 990, 852, 700, t, '#8bc93a');
-        Room.stepBadge(ctx, level < 0.99 ? 1 : !hooked ? 2 : 3, 3, 1020, 120);
+        Room.stepBadge(ctx, level < 0.99 ? 1 : 2, 2, 1060, 120);
       },
 
       onDown(p) {
         for (const b of Object.values(btns)) if (b.visible && b.hit(p)) { Sfx.click(); b.onClick(); return; }
-        if (Math.abs(p.x - LEV.x) < 60 && p.y > LEV.top - 30 && p.y < LEV.bot + 30) {
-          if (!hooked) { App.toast('Сначала подвесь слизня на крюк'); return; }
-          leverDrag = true; Sfx.switchSnap();
-          leverV = U.clamp(U.inv(LEV.top, LEV.bot, p.y), 0, 1);
-          return;
+        // клик по бутыли тоже наливает
+        if (!inside && U.dist(p.x, p.y, BOTTLE.x, BOTTLE.y) < 110) { Sfx.click(); pour(); return; }
+        if (!inside) {
+          if (drag.tryGrab(p)) return;
+          if (Math.abs(p.x - JAR.x) < JAR.w / 2 && p.y > JAR.top - 40 && p.y < JAR.bot) dropIn();
         }
-        if (!hooked) drag.tryGrab(p);
       },
-      onMove(p) {
-        if (leverDrag) leverV = U.clamp(U.inv(LEV.top, LEV.bot, p.y), 0, 1);
-        drag.move(p);
-      },
+      onMove(p) { drag.move(p); },
       onUp() {
-        leverDrag = false;
         if (drag.drop()) {
-          if (U.dist(tw.x, tw.y, HOOK.x, HOOK.y + 70) < 220) hookUp();
-          else tw.to(HOME.x, HOME.y, HOME.s, 0.5);
+          const overJar = Math.abs(tw.x - JAR.x) < JAR.w / 2 + 60 && tw.y < JAR.bot;
+          if (!overJar || !dropIn()) tw.to(HOME.x, HOME.y, HOME.s, 0.5);
         }
       }
     };
 
     function drawSlugHere(ctx) {
-      const sub = dissolving > 0.3;
+      const sub = inside && sink > 0.4;
+      if (inside) {
+        // тёмный ореол — иначе зелёный слизень теряется в зелёной кислоте
+        ctx.save();
+        const r = 190 * tw.s;
+        const g = ctx.createRadialGradient(tw.x, tw.y, r * 0.3, tw.x, tw.y, r);
+        g.addColorStop(0, 'rgba(14,46,6,0.7)');
+        g.addColorStop(1, 'rgba(18,54,8,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(tw.x, tw.y, r, r * 0.8, 0, 0, U.TAU); ctx.fill();
+        ctx.restore();
+      }
       SlugArt.draw(ctx, App.slug, {
         x: tw.x, y: tw.y, scale: tw.s, t,
         squash: 1 + Math.sin(t * (sub ? 10 : 1.7)) * (sub ? 0.06 : 0.03),
         state: sub ? 'scream' : 'idle',
-        rot: hooked ? Math.sin(t * 1.3) * 0.05 : 0,
+        rot: inside ? Math.sin(t * 0.8) * 0.12 : 0,
         look: { x: U.clamp((App.pointer.x - tw.x) / 400, -1, 1), y: U.clamp((App.pointer.y - tw.y) / 400, -1, 1) },
-        shadow: !hooked
+        shadow: !inside
       });
-      if (hooked) {
-        ctx.save();
-        ctx.strokeStyle = '#cdd6d0'; ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(tw.x - 30, tw.y - 40); ctx.lineTo(tw.x, tw.y - 60);
-        ctx.lineTo(tw.x + 30, tw.y - 40); ctx.stroke();
-        ctx.restore();
-      }
     }
   };
 })(window);

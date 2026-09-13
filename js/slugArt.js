@@ -35,7 +35,7 @@
     if (f.burns > 0) c = U.mixHsl(c, { h: 20, s: 30, l: 20 }, U.clamp(f.burns * 0.55, 0, 0.7));
     if (f.soot > 0) c = U.mixHsl(c, { h: 30, s: 8, l: 18 }, U.clamp(f.soot * 0.35, 0, 0.45));
     if (f.frozen > 0) c = U.mixHsl(c, { h: 196, s: 46, l: 68 }, U.clamp(f.frozen * 0.55, 0, 0.6));
-    if (f.melt > 0) c = U.mixHsl(c, { h: 88, s: 70, l: 46 }, U.clamp(f.melt * 0.4, 0, 0.45));
+    if (f.melt > 0) c = U.mixHsl(c, { h: 100, s: 30, l: 38 }, U.clamp(f.melt * 0.3, 0, 0.3));
     if (!slug.alive) c = U.mixHsl(c, { h: 100, s: 10, l: 42 }, 0.45);
     return c;
   }
@@ -290,83 +290,90 @@
     g.restore();
   }
 
-  /** дыры от кислоты — вырезаются из буфера */
-  function layerAcidHoles(g, slug, t) {
+  /** Набор «проеденных» кислотой дыр — один и тот же для дыр, ободков и костей */
+  function acidHoles(slug, t) {
     const f = slug.fx;
-    if (f.melt <= 0.05) return;
+    if (f.melt <= 0.05) return [];
     const rnd = U.mulberry32(slug.seed + 67);
-    const n = Math.round(2 + f.melt * 7);
+    const out = [];
+    const total = 5;
+    for (let i = 0; i < total; i++) {
+      // раскидываем дыры по кругу, чтобы не липли друг к другу
+      const a = (i / total) * U.TAU + 0.4 + rnd() * 0.5;
+      const rad = 0.40 + rnd() * 0.24;
+      let x = Math.cos(a) * RX * rad;
+      let y = Math.sin(a) * RY * rad * 0.85;
+      if (nearEye(x, y)) y += y >= 0 ? 34 : -34;
+      const sz = (22 + rnd() * 12) * (0.7 + f.melt * 0.45);
+      const rot = rnd() * U.TAU;
+      if (i / total > f.melt * 1.25) continue;
+      out.push({ x, y, sz, rot, seed: (slug.seed + i * 29) | 0, i });
+    }
+    return out;
+  }
+
+  function holePath(g, h, t, k = 1) {
+    const harm = U.makeHarmonics(h.seed, 3, 0.3);
+    U.smoothPath(g, U.blobPoints(h.x, h.y, h.sz * k, h.sz * 0.84 * k, harm, t * 0.4 + h.i, 24, 1));
+  }
+
+  /** дыры вырезаются из буфера — сквозь них видно фон */
+  function layerAcidHoles(g, slug, t) {
+    const holes = acidHoles(slug, t);
+    if (!holes.length) return;
     g.save();
     g.globalCompositeOperation = 'destination-out';
-    for (let i = 0; i < n; i++) {
-      const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.7;
-      const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.85;
-      const sz = (10 + rnd() * 26) * f.melt;
-      const harm = U.makeHarmonics((slug.seed + i * 29) | 0, 3, 0.35);
-      const pts = U.blobPoints(x, y, sz, sz * 0.85, harm, t * 0.6 + i, 22, 1);
-      U.smoothPath(g, pts);
-      g.fillStyle = '#000';
-      g.fill();
-    }
-    // проеденный нижний край
-    if (f.melt > 0.5) {
-      for (let i = 0; i < 7; i++) {
-        const x = -RX + rnd() * RX * 2;
-        const sz = 8 + rnd() * 22;
-        g.beginPath(); g.arc(x, RY * 0.82 + rnd() * 8, sz, 0, U.TAU); g.fill();
+    g.fillStyle = '#000';
+    for (const h of holes) { holePath(g, h, t); g.fill(); }
+    if (slug.fx.melt > 0.6) {
+      const rnd = U.mulberry32(slug.seed + 71);
+      for (let i = 0; i < 6; i++) {
+        const x = -RX * 0.8 + rnd() * RX * 1.6;
+        g.beginPath(); g.arc(x, RY * 0.8 + rnd() * 10, 10 + rnd() * 20, 0, U.TAU); g.fill();
       }
     }
     g.restore();
   }
 
-  /** свечение краёв дыр и кости — рисуется после вырезания, поверх */
-  function layerAcidGlow(g, slug, t) {
-    const f = slug.fx;
-    if (f.melt <= 0.05) return;
-    const rnd = U.mulberry32(slug.seed + 67);
-    const n = Math.round(2 + f.melt * 7);
-    g.save();
-    for (let i = 0; i < n; i++) {
-      const a = rnd() * U.TAU, r = Math.sqrt(rnd()) * 0.7;
-      const x = Math.cos(a) * RX * r, y = Math.sin(a) * RY * r * 0.85;
-      const sz = (10 + rnd() * 26) * f.melt;
-      const harm = U.makeHarmonics((slug.seed + i * 29) | 0, 3, 0.35);
-      const pts = U.blobPoints(x, y, sz * 1.06, sz * 0.9, harm, t * 0.6 + i, 22, 1);
-      U.smoothPath(g, pts);
-      g.strokeStyle = `rgba(150,255,60,${0.5 + 0.3 * Math.sin(t * 4 + i)})`;
-      g.lineWidth = 3.5; g.stroke();
-      g.strokeStyle = 'rgba(70,140,20,0.6)'; g.lineWidth = 1.2; g.stroke();
-    }
-    g.restore();
-  }
+  /** ярко-зелёный разъеденный ободок и торчащие из дыры кости */
+  function layerAcidBones(g, slug, t) {
+    const holes = acidHoles(slug, t);
+    if (!holes.length) return;
+    for (const h of holes) {
+      // разъеденный ободок
+      g.save();
+      holePath(g, h, t, 1.02);
+      g.lineWidth = Math.max(5, h.sz * 0.3);
+      g.strokeStyle = `rgba(122,222,58,${0.85 + 0.15 * Math.sin(t * 4 + h.i)})`;
+      g.stroke();
+      g.lineWidth = Math.max(2, h.sz * 0.1);
+      g.strokeStyle = 'rgba(70,150,24,0.5)';
+      g.stroke();
+      g.restore();
 
-  function layerBones(g, slug, t) {
-    const f = slug.fx;
-    if (f.bones <= 0.12) return;
-    const al = U.clamp((f.bones - 0.12) * 1.6, 0, 1);
-    g.save();
-    g.globalAlpha = al;
-    g.fillStyle = '#f2e9d8';
-    g.strokeStyle = 'rgba(120,105,80,0.65)';
-    g.lineWidth = 1.6;
-    // позвоночник
-    const sx = -RX * 0.55, sy = RY * 0.05;
-    for (let i = 0; i < 7; i++) {
-      const x = sx + i * (RX * 0.19);
-      const y = sy + Math.sin(i * 0.7) * 7;
-      U.roundRect(g, x - 9, y - 7, 18, 14, 5); g.fill(); g.stroke();
+      // кости — бледно-розовая «решётка» поперёк дыры, чуть выступает за край
+      g.save();
+      holePath(g, h, t, 1.34); g.clip();
+      g.lineCap = 'round';
+      const L = h.sz * 1.7;
+      const gap = h.sz * 0.4;
+      const bone = (ang, off) => {
+        const dx = Math.cos(ang), dy = Math.sin(ang);
+        const nx = -dy * off, ny = dx * off;
+        g.beginPath();
+        g.moveTo(h.x + nx - dx * L, h.y + ny - dy * L);
+        g.lineTo(h.x + nx + dx * L, h.y + ny + dy * L);
+        g.stroke();
+      };
+      const grid = (w, style) => {
+        g.lineWidth = w; g.strokeStyle = style;
+        bone(h.rot, -gap); bone(h.rot, gap);
+        bone(h.rot + Math.PI / 2, -gap * 0.85); bone(h.rot + Math.PI / 2, gap * 0.85);
+      };
+      grid(h.sz * 0.34, 'rgba(150,110,95,0.3)');
+      grid(h.sz * 0.26, '#f6d6c4');
+      g.restore();
     }
-    // рёбра
-    for (let i = 0; i < 4; i++) {
-      const x = sx + 14 + i * (RX * 0.22);
-      g.lineWidth = 5.5; g.strokeStyle = '#f2e9d8';
-      g.beginPath(); g.moveTo(x, sy - 4);
-      g.quadraticCurveTo(x + 16, sy - 34, x + 34, sy - 22); g.stroke();
-      g.beginPath(); g.moveTo(x, sy + 4);
-      g.quadraticCurveTo(x + 16, sy + 34, x + 34, sy + 22); g.stroke();
-      g.lineWidth = 1.2; g.strokeStyle = 'rgba(120,105,80,0.5)';
-    }
-    g.restore();
   }
 
   function layerWet(g, slug, t) {
@@ -545,13 +552,12 @@
     layerBurns(g, slug, t);
     layerWounds(g, slug, t);
     layerBlisters(g, slug, t);
-    layerBones(g, slug, t);
     layerWet(g, slug, t);
     layerFrost(g, slug, t);
     g.restore();
 
     layerAcidHoles(g, slug, t);
-    layerAcidGlow(g, slug, t);
+    layerAcidBones(g, slug, t);
 
     drawEyes(g, slug, t, look, state);
     drawMouth(g, slug, t, state);
