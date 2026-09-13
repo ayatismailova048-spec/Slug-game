@@ -52,7 +52,15 @@
 
   function bindInput() {
     const c = App.canvas;
+    // события в HTML-окошке (ввод имени, стартовый экран) игре не принадлежат:
+    // если их гасить, кнопки перестают нажиматься и не открывается клавиатура
+    const fromUI = (e) => {
+      if (App.naming) return true;
+      const t = e && e.target;
+      return !!(t && t.closest && t.closest('#namebox, #boot'));
+    };
     const down = (e) => {
+      if (fromUI(e)) return;
       Sfx.init();
       const t = e.touches ? e.touches[0] : e;
       const p = toVirtual(t.clientX, t.clientY);
@@ -62,6 +70,7 @@
       if (e.cancelable) e.preventDefault();
     };
     const move = (e) => {
+      if (fromUI(e)) return;
       const t = e.touches ? e.touches[0] : e;
       const p = toVirtual(t.clientX, t.clientY);
       App.pointer.x = p.x; App.pointer.y = p.y;
@@ -70,6 +79,7 @@
     };
     const up = (e) => {
       App.pointer.down = false; App.pointer.justUp = true;
+      if (fromUI(e)) return;
       if (App.screen && App.screen.onUp) App.screen.onUp(App.pointer);
       if (e && e.cancelable) e.preventDefault();
     };
@@ -98,11 +108,13 @@
     const cancel = document.getElementById('nameCancel');
     if (!box || !input) { cb(initial || 'Слизень'); return; }
 
-    App.naming = true;
     box.classList.toggle('rot', !!App.rot);
     box.classList.remove('hidden');
     input.value = initial || '';
-    setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 40);
+    // фокус — синхронно, пока ещё «живо» касание пользователя
+    try { input.focus({ preventScroll: true }); input.select(); } catch (e) { try { input.focus(); } catch (e2) {} }
+    requestAnimationFrame(() => { try { input.focus(); input.select(); } catch (e) {} });
+    App.naming = true;
 
     const finish = (accepted) => {
       App.naming = false;
