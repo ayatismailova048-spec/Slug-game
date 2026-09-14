@@ -16,6 +16,23 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
+<script>
+/* если игра запущена из иконки — заставку не показываем вовсе,
+   класс ставится до первой отрисовки, чтобы она не мелькала */
+(function () {
+  var app = false;
+  try {
+    if (window.matchMedia) {
+      app = matchMedia('(display-mode: standalone)').matches
+         || matchMedia('(display-mode: fullscreen)').matches
+         || matchMedia('(display-mode: minimal-ui)').matches;
+    }
+    if (navigator.standalone === true) app = true;
+    if (document.referrer.indexOf('android-app://') === 0) app = true;
+  } catch (e) { /* не важно */ }
+  if (app) document.documentElement.className += ' app-mode';
+})();
+</script>
 </head>
 <body>
   <div id="stage">

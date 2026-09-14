@@ -23,6 +23,8 @@ html, body {
   text-align: center; color: #eafff0;
 }
 #boot.hidden { opacity: 0; visibility: hidden; }
+/* запущено из иконки — заставки нет совсем */
+html.app-mode #boot { display: none !important; }
 .boot-inner { padding: 30px; max-width: 620px; }
 .boot-slug { width: 132px; height: 132px; border-radius: 30px; display: block; margin: 0 auto;
   box-shadow: 0 10px 26px rgba(0,0,0,.45); animation: wob 2.4s ease-in-out infinite; }
