@@ -1,7 +1,7 @@
 /* ============================================================
    sw.js — сервис-воркер: игра работает и без интернета
    ============================================================ */
-const CACHE = 'slug-v3';
+const CACHE = 'slug-v4';
 
 const FILES = [
   './',
@@ -61,22 +61,29 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // шрифты и прочее — мимо кэша
 
+  // сначала сеть (чтобы новая версия приезжала сразу), кэш — запасной вариант
   e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) {
-        // обновляем в фоне
-        fetch(req).then((res) => {
-          if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
-        }).catch(() => {});
-        return hit;
-      }
-      return fetch(req).then((res) => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      }).catch(() => caches.match('index.html'));
-    })
+    fromNetwork(req, 3000).catch(() => fromCache(req))
   );
 });
+
+function fromNetwork(req, timeout) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), timeout);
+    fetch(req).then((res) => {
+      clearTimeout(timer);
+      if (!res || !res.ok) { reject(new Error('bad response')); return; }
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      resolve(res);
+    }).catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+function fromCache(req) {
+  return caches.match(req).then((hit) => {
+    if (hit) return hit;
+    if (req.mode === 'navigate') return caches.match('index.html');
+    return Promise.reject(new Error('no cache'));
+  });
+}

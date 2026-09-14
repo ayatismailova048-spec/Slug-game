@@ -35,8 +35,18 @@
   /* ---------- установка как приложение ---------- */
   const topLevel = (() => { try { return window.top === window.self; } catch (e) { return false; } })();
   if (topLevel && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    // если приедет новая версия — перезагрузить страницу один раз
+    let reloading = false;
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      location.reload();
+    });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch((e) => console.warn('sw:', e));
+      navigator.serviceWorker.register('sw.js')
+        .then((reg) => { try { reg.update(); } catch (e) { /* не важно */ } })
+        .catch((e) => console.warn('sw:', e));
     });
   }
 
