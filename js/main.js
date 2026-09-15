@@ -3,25 +3,24 @@
    ============================================================ */
 (function () {
   'use strict';
-  const boot = document.getElementById('boot');
-  const btn = document.getElementById('bootBtn');
-
   let started = false;
 
-  function start(instant) {
+  function start() {
     if (started) return;
     started = true;
     Sfx.init();
-    boot.classList.add('hidden');
-    if (instant) boot.style.display = 'none';
-    else setTimeout(() => { boot.style.display = 'none'; }, 500);
     App.start('game', 'title');
+    // игра готова — экран загрузки уходит, доиграв свою анимацию
+    if (window.SlugLoader) window.SlugLoader.done();
   }
-  btn.addEventListener('click', () => start(false));
-  btn.addEventListener('touchend', (e) => { e.preventDefault(); start(false); }, { passive: false });
-
-  // автозапуск без звука, если пользователь не нажал (например, при тестах)
   window.__startGame = start;
+
+  // игра запускается сразу, поверх неё крутится экран загрузки
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 
   // звук включится сам при первом касании — браузер не даёт включить его раньше
   function unlockAudio() {
@@ -85,13 +84,8 @@
     if (installBtn) installBtn.classList.add('hidden');
   }
 
-  // запущено из иконки — значит установлено: прячем кнопку и заставку,
-  // игра открывается сразу
-  if (isInstalled()) {
-    markInstalled();
-    hideInstall();
-    if (isStandalone()) start(true);
-  }
+  // запущено из иконки — значит установлено, кнопку больше не показываем
+  if (isInstalled()) { markInstalled(); hideInstall(); }
 
   let deferred = null;
   window.addEventListener('beforeinstallprompt', (e) => {

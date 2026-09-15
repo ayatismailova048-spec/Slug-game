@@ -1,13 +1,14 @@
 /* ============================================================
    sw.js — сервис-воркер: игра работает и без интернета
    ============================================================ */
-const CACHE = 'slug-v6';
+const CACHE = 'slug-v7';
 
 const FILES = [
   './',
   'index.html',
   'manifest.webmanifest',
   'css/style.css',
+  'js/loader.js',
   'js/util.js',
   'js/audio.js',
   'js/fx.js',

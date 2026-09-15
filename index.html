@@ -17,25 +17,11 @@
       media="print" onload="this.media='all'">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
-<script>
-/* если игра запущена из иконки — заставку не показываем вовсе,
-   класс ставится до первой отрисовки, чтобы она не мелькала */
-(function () {
-  var app = false;
-  try {
-    if (window.matchMedia) {
-      app = matchMedia('(display-mode: standalone)').matches
-         || matchMedia('(display-mode: fullscreen)').matches
-         || matchMedia('(display-mode: minimal-ui)').matches;
-    }
-    if (navigator.standalone === true) app = true;
-    if (document.referrer.indexOf('android-app://') === 0) app = true;
-  } catch (e) { /* не важно */ }
-  if (app) document.documentElement.className += ' app-mode';
-})();
-</script>
 </head>
 <body>
+  <canvas id="load"></canvas>
+  <script src="js/loader.js"></script>
+
   <div id="stage">
     <canvas id="game"></canvas>
   </div>
@@ -52,15 +38,6 @@
         <button id="nameOk">Сохранить</button>
         <button id="nameCancel">Отмена</button>
       </div>
-    </div>
-  </div>
-
-  <div id="boot">
-    <div class="boot-inner">
-      <img class="boot-slug" src="icons/icon-192.png" alt="Slug">
-      <h1>Slug</h1>
-      <button id="bootBtn">Начать</button>
-      <small>Нажми, чтобы включить звук</small>
     </div>
   </div>
 
