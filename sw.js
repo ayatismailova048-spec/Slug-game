@@ -1,7 +1,7 @@
 /* ============================================================
    sw.js — сервис-воркер: игра работает и без интернета
    ============================================================ */
-const CACHE = 'slug-v5';
+const CACHE = 'slug-v6';
 
 const FILES = [
   './',
@@ -42,7 +42,7 @@ const FILES = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      .then((c) => Promise.allSettled(FILES.map((f) => c.add(f))))
+      .then((c) => Promise.allSettled(FILES.map((f) => c.add(new Request(f, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -61,29 +61,22 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // шрифты и прочее — мимо кэша
 
-  // сначала сеть (чтобы новая версия приезжала сразу), кэш — запасной вариант
+  // отдаём из кэша сразу (игра открывается мгновенно),
+  // а свежую версию тянем в фоне — её подхватит следующий воркер
   e.respondWith(
-    fromNetwork(req, 3000).catch(() => fromCache(req))
+    caches.match(req).then((hit) => {
+      const net = fetch(req).then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      });
+      if (hit) { net.catch(() => {}); return hit; }
+      return net.catch(() => {
+        if (req.mode === 'navigate') return caches.match('index.html');
+        return Response.error();
+      });
+    })
   );
 });
-
-function fromNetwork(req, timeout) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), timeout);
-    fetch(req).then((res) => {
-      clearTimeout(timer);
-      if (!res || !res.ok) { reject(new Error('bad response')); return; }
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-      resolve(res);
-    }).catch((err) => { clearTimeout(timer); reject(err); });
-  });
-}
-
-function fromCache(req) {
-  return caches.match(req).then((hit) => {
-    if (hit) return hit;
-    if (req.mode === 'navigate') return caches.match('index.html');
-    return Promise.reject(new Error('no cache'));
-  });
-}
