@@ -1,7 +1,7 @@
 /* ============================================================
    sw.js — сервис-воркер: игра работает и без интернета
    ============================================================ */
-const CACHE = 'slug-v7';
+const CACHE = 'slug-v8';
 
 const FILES = [
   './',
@@ -28,7 +28,6 @@ const FILES = [
   'js/stations/pills.js',
   'js/stations/pan.js',
   'js/stations/ice.js',
-  'js/screens/title.js',
   'js/screens/hub.js',
   'js/screens/saves.js',
   'js/screens/map.js',

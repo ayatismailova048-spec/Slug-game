@@ -93,7 +93,7 @@
     global.addEventListener('keydown', (e) => {
       const tag = e.target && e.target.tagName;
       if (App.naming || tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'Escape' && App.screenName !== 'hub' && App.screenName !== 'title') App.go('hub');
+      if (e.key === 'Escape' && App.screenName !== 'hub') App.go('hub');
       if (e.key === 'm' || e.key === 'M') App.toggleMute();
       if (App.screen && App.screen.onKey) App.screen.onKey(e);
     });

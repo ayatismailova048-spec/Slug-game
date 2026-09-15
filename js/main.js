@@ -9,7 +9,7 @@
     if (started) return;
     started = true;
     Sfx.init();
-    App.start('game', 'title');
+    App.start('game', 'hub');
     // игра готова — экран загрузки уходит, доиграв свою анимацию
     if (window.SlugLoader) window.SlugLoader.done();
   }
